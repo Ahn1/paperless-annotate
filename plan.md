@@ -320,7 +320,19 @@ Begründung Styling: Tailwind **v4** (nicht v3), weil das Theme-System (Hell/Dun
 - Optionales Segmentieren langer Striche für partielles Radieren ist nicht umgesetzt (Radierer löscht ganze Objekte)
 - Palm Rejection/iOS-Scribble-Verhalten braucht einen Test auf echtem iPad (wantsRawTouch-Mechanik ist implementiert, Gerätetest steht aus)
 
-### ⬜ M5 – Polish
+### ✅ M5 – Polish (fertig, 2026-07-10)
+
+**Umgesetzt:**
+
+- **PWA:** PNG-Icons (192/512 + maskable, aus [public/icons/favicon.svg](public/icons/favicon.svg) gerendert); Workbox-Runtime-Caching: Thumbnails/Previews Stale-While-Revalidate (500 Einträge, 14 Tage), Stammdaten NetworkFirst; WASM im Precache ([vite.config.ts](vite.config.ts))
+- **Bundle-Splitting:** manualChunks (react/query-Vendor), Editor+PDFium bereits lazy (M4)
+- **Gesten/App-Gefühl:** eigenes Pull-to-Refresh in der Dokumentenliste ([PullToRefresh.tsx](src/components/PullToRefresh.tsx), mit Haptik); View Transitions auf Navigation/Karten (`viewTransition`-Prop von React Router)
+- **Tastaturkürzel:** `/` fokussiert Suche (AppShell), `Ctrl/Cmd+S` speichert im Editor
+- **PIN-Schutz (Kap. 8):** `enablePin`/`disablePin` im Session-Store (AES-GCM via [crypto.ts](src/lib/crypto.ts)), Sperrbildschirm [UnlockScreen.tsx](src/features/onboarding/UnlockScreen.tsx), Option in den Einstellungen
+- **Tests:** 17 Vitest-Unit-Tests grün (URL-Normalisierung, Lokale-Adressen-Erkennung, Filter→Query-Params, SavedView↔Filter-Roundtrip inkl. Alt-Regeln 8/9, Crypto-Roundtrip); Playwright-Smoke-E2E grün ([e2e/smoke.spec.ts](e2e/smoke.spec.ts)): Login → Dokument öffnen → PDF rendert → Ink-Strich zeichnen → als neue Version speichern (Upload-Body enthält `%PDF`) — komplett gegen gemockte API (`npm run test:e2e`)
+- **docker compose** für Paperless v3 (Beta-Image) unter [docker/docker-compose.yml](docker/docker-compose.yml), inkl. `PAPERLESS_CORS_ALLOWED_HOSTS` für die Dev-Origins
+
+**Offen/nice-to-have:** Swipe-Aktionen auf Listenelementen, AMOLED als eigenes Manifest-theme_color, Lighthouse-Messung, ESLint/Prettier-Konfiguration, Besitzer/Berechtigungen-Editing, Teilen-Links.
 
 **Fortsetzungshinweise:**
 
@@ -336,3 +348,6 @@ Begründung Styling: Tailwind **v4** (nicht v3), weil das Theme-System (Hell/Dun
 - Paperless v3 ist zum Zeitpunkt dieses Dokuments Beta; exakte Feldnamen der Versions-API (z. B. `versions`-Array im Dokument-Serializer, `root_document`) gegen das OpenAPI-Schema der Zielinstanz (`/api/schema/view/`) prüfen
 - Verhalten von `?version=` bei `download` mit `original=true` testen
 - EmbedPDF: prüfen, ob FreeText-Editing im verwendeten Release vollständig ist; sonst FreeText über die headless-Annotation-API + eigene Move/Resize-Handles umsetzen
+- EmbedPDF 2.14.4: `usePdfiumEngine({ worker: true })` hängt (WASM wird im Worker nie angefragt, Dokument lädt nie) – daher läuft die Engine derzeit im Main-Thread (`worker: false`). Bei EmbedPDF-Updates erneut testen, Worker wäre für große PDFs besser
+- Palm Rejection (`wantsRawTouch:false`-Override) und iOS-Scribble-Verhalten auf echtem iPad mit Apple Pencil verifizieren
+- Druckstärke→Strichstärke: vom EmbedPDF-Ink-Tool nicht unterstützt (fester `strokeWidth`); bei Bedarf Custom-Tool schreiben oder Feature-Request upstream

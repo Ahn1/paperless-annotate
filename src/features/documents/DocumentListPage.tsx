@@ -20,6 +20,7 @@ import { SearchBar } from './SearchBar'
 import { FilterPanel } from './FilterPanel'
 import { DocumentCard, DocumentRow, DocumentTable } from './DocumentItems'
 import { BulkActionsBar } from './BulkActionsBar'
+import { PullToRefresh } from '@/components/PullToRefresh'
 
 const orderings: { value: DocumentOrdering; key: 'documents.sort.created' | 'documents.sort.added' | 'documents.sort.title' | 'documents.sort.correspondent' | 'documents.sort.asn' }[] = [
   { value: '-created', key: 'documents.sort.created' },
@@ -96,6 +97,7 @@ export function DocumentListPage({ inboxOnly = false }: { inboxOnly?: boolean })
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 p-4">
+      <PullToRefresh onRefresh={() => query.refetch()} />
       {/* Kopf */}
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="ui-chrome text-xl font-bold text-ink">

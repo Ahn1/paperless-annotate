@@ -159,6 +159,35 @@ export function SettingsPage() {
           <Plus className="size-4" />
           {t('settings.addProfile')}
         </Button>
+
+        {/* PIN-Schutz für das aktive Profil (Kap. 8) */}
+        {session.activeProfile && (
+          <div className="mt-4 border-t border-line pt-3">
+            <p className="ui-chrome mb-2 text-xs text-ink-muted">{t('pin.hint')}</p>
+            {session.activeProfile.encrypted ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (window.confirm(t('pin.disable') + '?')) void session.disablePin()
+                }}
+              >
+                {t('pin.disable')}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const pin = window.prompt(t('pin.set'))
+                  if (pin) void session.enablePin(pin)
+                }}
+              >
+                {t('pin.enable')}
+              </Button>
+            )}
+          </div>
+        )}
       </Section>
 
       {/* CORS-Hinweis */}

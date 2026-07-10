@@ -180,6 +180,18 @@ export function EditorInner({
     setDraftAvailable(false)
   }
 
+  // Tastaturkürzel: Ctrl/Cmd+S speichert
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+        event.preventDefault()
+        setSaveOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
   // ---------- Verlassen ----------
   function exit() {
     if (dirty && !window.confirm(t('editor.unsavedLeave'))) return

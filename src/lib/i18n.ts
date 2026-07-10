@@ -225,6 +225,14 @@ const de = {
   'editor.unsavedLeave': 'Ungespeicherte Annotationen – wirklich verlassen? (Entwurf bleibt lokal erhalten)',
   'editor.loadError': 'PDF konnte nicht geladen werden.',
   'editor.deleteSelected': 'Auswahl löschen',
+  'pin.title': 'App gesperrt',
+  'pin.enter': 'PIN eingeben',
+  'pin.wrong': 'Falsche PIN',
+  'pin.unlock': 'Entsperren',
+  'pin.enable': 'Mit PIN schützen',
+  'pin.disable': 'PIN entfernen',
+  'pin.set': 'PIN festlegen',
+  'pin.hint': 'Das Zugriffstoken wird mit einem aus der PIN abgeleiteten Schlüssel verschlüsselt (WebCrypto). Beim App-Start wird die PIN abgefragt.',
 } as const
 
 export type TranslationKey = keyof typeof de
@@ -451,6 +459,14 @@ const en: Record<TranslationKey, string> = {
   'editor.unsavedLeave': 'Unsaved annotations – really leave? (Draft is kept locally)',
   'editor.loadError': 'Could not load the PDF.',
   'editor.deleteSelected': 'Delete selection',
+  'pin.title': 'App locked',
+  'pin.enter': 'Enter PIN',
+  'pin.wrong': 'Wrong PIN',
+  'pin.unlock': 'Unlock',
+  'pin.enable': 'Protect with PIN',
+  'pin.disable': 'Remove PIN',
+  'pin.set': 'Set PIN',
+  'pin.hint': 'The access token is encrypted with a key derived from the PIN (WebCrypto). The PIN is requested at app start.',
 }
 
 const dictionaries: Record<Lang, Record<TranslationKey, string>> = { de, en }

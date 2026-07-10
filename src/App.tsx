@@ -5,6 +5,7 @@ import { queryClient } from '@/app/queryClient'
 import { useSession } from '@/stores/session'
 import { AppShell } from '@/features/shell/AppShell'
 import { OnboardingPage } from '@/features/onboarding/OnboardingPage'
+import { UnlockScreen } from '@/features/onboarding/UnlockScreen'
 import { DocumentListPage } from '@/features/documents/DocumentListPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { CenteredSpinner } from '@/components/ui/misc'
@@ -37,6 +38,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       </div>
     )
   }
+  if (status === 'locked') return <UnlockScreen />
   if (status !== 'ready') return null
   return <>{children}</>
 }

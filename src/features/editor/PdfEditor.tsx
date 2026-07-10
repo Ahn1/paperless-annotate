@@ -33,8 +33,10 @@ export default function PdfEditor({
   versionId: number | undefined
   buffer: ArrayBuffer
 }) {
-  // PDFium im Web Worker, WASM aus dem eigenen Bundle (offlinefähig, kein CDN)
-  const { engine, isLoading } = usePdfiumEngine({ worker: true, wasmUrl })
+  // PDFium mit lokal gebundeltem WASM (offlinefähig, kein CDN).
+  // Hinweis: worker:true hängt in 2.14.4 (WASM wird im Worker nie geladen, siehe plan.md Kap. 12/M5),
+  // daher läuft die Engine im Main-Thread.
+  const { engine, isLoading } = usePdfiumEngine({ worker: false, wasmUrl })
   const [docId] = useState(() => `paperless-${document.id}-${versionId ?? 'current'}`)
 
   const plugins = useMemo(

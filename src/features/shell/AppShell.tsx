@@ -12,7 +12,7 @@ import {
   Tags,
   type LucideIcon,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useT, type TranslationKey } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { useOnline } from '@/hooks/useOnline'
@@ -44,6 +44,19 @@ export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const savedViews = useSavedViews()
   const profile = useSession((s) => s.activeProfile)
+
+  // Tastaturkürzel: "/" fokussiert die Suche
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement
+      if (event.key === '/' && !target.closest('input, textarea, [contenteditable]')) {
+        event.preventDefault()
+        navigate('/documents?focus=search')
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [navigate])
 
   const sidebarViews = (savedViews.data ?? []).filter((v) => v.show_in_sidebar)
 
@@ -106,7 +119,7 @@ export function AppShell() {
             {t('common.offline')}
           </div>
         )}
-        <main className="min-h-0 flex-1 overflow-y-auto pb-20 sm:pb-0">
+        <main id="app-scroll" className="min-h-0 flex-1 overflow-y-auto pb-20 sm:pb-0">
           <Outlet />
         </main>
 
@@ -150,6 +163,7 @@ function SidebarLink({ item, label, collapsed }: { item: NavItem; label: string;
     <NavLink
       to={item.to}
       end={item.to === '/'}
+      viewTransition
       className={({ isActive }) =>
         cn(
           'flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors',

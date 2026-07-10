@@ -28,6 +28,7 @@ export function DocumentCard({
   return (
     <Link
       to={`/documents/${document.id}`}
+      viewTransition
       onClick={(e) => {
         if (selectionMode) {
           e.preventDefault()

@@ -1,0 +1,43 @@
+# Paperless-ngx v3 (Beta) zum lokalen Testen der PWA (Kap. 9 des Anforderungskatalogs)
+#
+# Start:   docker compose -f docker/docker-compose.yml up -d
+# Login:   http://localhost:8000  (admin / admin – nur für lokale Tests!)
+#
+# Wichtig: PAPERLESS_CORS_ALLOWED_HOSTS enthält die Dev-Origin der PWA (Vite: http://localhost:5173).
+# Für die produktive PWA-Origin entsprechend ergänzen.
+
+services:
+  broker:
+    image: docker.io/library/redis:7
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+
+  webserver:
+    # v3 ist zum Zeitpunkt der Erstellung Beta – Tag ggf. auf das aktuelle v3-Release anpassen
+    image: ghcr.io/paperless-ngx/paperless-ngx:beta
+    restart: unless-stopped
+    depends_on:
+      - broker
+    ports:
+      - "8000:8000"
+    volumes:
+      - data:/usr/src/paperless/data
+      - media:/usr/src/paperless/media
+      - ./export:/usr/src/paperless/export
+      - ./consume:/usr/src/paperless/consume
+    environment:
+      PAPERLESS_REDIS: redis://broker:6379
+      PAPERLESS_TIME_ZONE: Europe/Berlin
+      PAPERLESS_OCR_LANGUAGE: deu
+      PAPERLESS_ADMIN_USER: admin
+      PAPERLESS_ADMIN_PASSWORD: admin
+      PAPERLESS_URL: http://localhost:8000
+      # CORS-Freigabe für die PWA (Dev-Server + Preview)
+      PAPERLESS_CORS_ALLOWED_HOSTS: http://localhost:5173,http://localhost:4173
+      PAPERLESS_ALLOWED_HOSTS: localhost,127.0.0.1
+
+volumes:
+  data:
+  media:
+  redisdata:
