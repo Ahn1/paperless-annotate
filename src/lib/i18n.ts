@@ -241,6 +241,11 @@ const de = {
   'settings.reading': 'Lesen',
   'settings.rememberPosition': 'Position im PDF merken',
   'settings.rememberPositionHint': 'Beim Öffnen im Lesemodus an die zuletzt gelesene Stelle springen (wird pro Dokument lokal gespeichert).',
+  'settings.detectedVersion': 'Erkannte Server-Version',
+  'settings.versionUnknown': 'unbekannt (Server gibt Versions-Header nicht frei)',
+  'settings.versionV2': 'Paperless v2 (keine Dokumentversionen)',
+  'settings.versionV3': 'Paperless v3+ (Dokumentversionen verfügbar)',
+  'settings.versionHint': 'Versionsdaten sind nur lesbar, wenn der Server sie per Access-Control-Expose-Headers freigibt. Andernfalls wird die Version am API-Verhalten erkannt.',
 } as const
 
 export type TranslationKey = keyof typeof de
@@ -483,6 +488,11 @@ const en: Record<TranslationKey, string> = {
   'settings.reading': 'Reading',
   'settings.rememberPosition': 'Remember position in PDF',
   'settings.rememberPositionHint': 'When opening in reading mode, jump to where you left off (stored locally per document).',
+  'settings.detectedVersion': 'Detected server version',
+  'settings.versionUnknown': 'unknown (server does not expose version headers)',
+  'settings.versionV2': 'Paperless v2 (no document versions)',
+  'settings.versionV3': 'Paperless v3+ (document versions available)',
+  'settings.versionHint': 'Version data is only readable if the server exposes it via Access-Control-Expose-Headers. Otherwise the version is inferred from API behavior.',
 }
 
 const dictionaries: Record<Lang, Record<TranslationKey, string>> = { de, en }

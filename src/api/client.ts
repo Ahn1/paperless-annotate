@@ -94,6 +94,14 @@ export class PaperlessClient {
     return this.versionPinned ? `application/json; version=${API_VERSION}` : 'application/json'
   }
 
+  /**
+   * true, sobald der Server die gepinnte API-Version (v3) mit 406 abgelehnt hat →
+   * starker Hinweis auf einen älteren Server (Paperless v2).
+   */
+  get versionDowngraded(): boolean {
+    return !this.versionPinned
+  }
+
   authHeader(): Record<string, string> {
     return { Authorization: `Token ${this.token}` }
   }

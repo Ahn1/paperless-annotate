@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { BookOpen, Check, LogOut, Moon, Paintbrush, Plus, Server, Sun, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { NativeSelect } from '@/components/ui/Input'
@@ -123,6 +123,7 @@ export function SettingsPage() {
 
       {/* Server-Profile */}
       <Section title={t('settings.profiles')} icon={<Server className="size-4" />}>
+        <DetectedVersion />
         <ul className="space-y-2">
           {session.profiles.map((profile) => {
             const isActive = session.activeProfile?.id === profile.id
@@ -214,6 +215,38 @@ export function SettingsPage() {
           {cacheCleared ? t('settings.cacheCleared') : t('settings.clearCache')}
         </Button>
       </Section>
+    </div>
+  )
+}
+
+/** Zeigt die erkannte Paperless-Version des aktiven Servers (aus Headern oder API-Verhalten). */
+function DetectedVersion() {
+  const t = useT()
+  const api = useSession((s) => s.api)
+
+  // Günstiger Ping, damit serverInfo/versionDowngraded am Client sicher gesetzt sind
+  const { isSuccess } = useQuery({
+    queryKey: [api?.client.baseUrl, 'version-probe'],
+    queryFn: () => api!.listDocuments({ page: 1, pageSize: 1 }),
+    enabled: !!api,
+    staleTime: 60 * 1000,
+  })
+
+  if (!api) return null
+  const { serverVersion, apiVersion } = api.client.serverInfo
+  const downgraded = api.client.versionDowngraded
+
+  let label: string
+  if (serverVersion) label = `Paperless ${serverVersion}${apiVersion ? ` · API v${apiVersion}` : ''}`
+  else if (downgraded) label = t('settings.versionV2')
+  else if (isSuccess) label = t('settings.versionV3')
+  else label = t('settings.versionUnknown')
+
+  return (
+    <div className="mb-3 rounded-xl border border-line bg-surface p-3">
+      <p className="ui-chrome text-xs font-medium text-ink-muted">{t('settings.detectedVersion')}</p>
+      <p className="text-sm font-semibold text-ink">{label}</p>
+      {!serverVersion && <p className="ui-chrome mt-1 text-xs text-ink-faint">{t('settings.versionHint')}</p>}
     </div>
   )
 }

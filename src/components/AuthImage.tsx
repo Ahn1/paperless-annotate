@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useApi } from '@/stores/session'
 import { cn } from '@/lib/utils'
 import { FileText } from 'lucide-react'
@@ -30,14 +30,20 @@ export function AuthImage({
     gcTime: 30 * 60 * 1000,
   })
 
-  const url = useMemo(() => (blob ? URL.createObjectURL(blob) : null), [blob])
+  // Object-URL im selben Effect erzeugen und revoken: useMemo + Cleanup-Revoke
+  // hinterlässt bei StrictMode-Doppel-Mount (Blob synchron aus dem Cache) eine tote URL.
+  const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
+    if (!blob) return
+    const objectUrl = URL.createObjectURL(blob)
+    setUrl(objectUrl)
     return () => {
-      if (url) URL.revokeObjectURL(url)
+      URL.revokeObjectURL(objectUrl)
+      setUrl(null)
     }
-  }, [url])
+  }, [blob])
 
-  if (isError || (!url && blob !== undefined)) {
+  if (isError) {
     return (
       <div className={cn('flex items-center justify-center bg-surface-2 text-ink-faint', className)}>
         <FileText className="size-8" />

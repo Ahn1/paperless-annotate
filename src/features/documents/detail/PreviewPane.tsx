@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { FileWarning } from 'lucide-react'
 import { useApi } from '@/stores/session'
@@ -15,12 +15,18 @@ export function PreviewPane({ documentId, versionId, className }: { documentId: 
     staleTime: 10 * 60 * 1000,
   })
 
-  const url = useMemo(() => (blob ? URL.createObjectURL(blob) : null), [blob])
+  // Object-URL im selben Effect erzeugen und revoken (wie AuthImage): useMemo + Cleanup-Revoke
+  // hinterlässt bei einem Doppel-Mount eine tote URL → leerer iframe.
+  const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
+    if (!blob) return
+    const objectUrl = URL.createObjectURL(blob)
+    setUrl(objectUrl)
     return () => {
-      if (url) URL.revokeObjectURL(url)
+      URL.revokeObjectURL(objectUrl)
+      setUrl(null)
     }
-  }, [url])
+  }, [blob])
 
   if (isError) {
     return (

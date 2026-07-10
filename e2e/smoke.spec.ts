@@ -170,3 +170,25 @@ test('Login → Dokument öffnen → annotieren → Version hochladen', async ({
   // Zurück im Dokumentdetail
   await expect(page.getByRole('heading', { name: 'Testdokument' })).toBeVisible({ timeout: 15_000 })
 })
+
+test('Lesemodus rendert die PDF-Seite', async ({ page }) => {
+  await mockPaperlessApi(page, () => undefined)
+
+  // Onboarding
+  await page.goto('/')
+  await page.getByPlaceholder('https://paperless.example.com').fill(BASE)
+  await page.getByRole('button', { name: 'Verbindung prüfen' }).click()
+  await page.getByRole('button', { name: 'Mit API-Token' }).click()
+  await page.locator('form input').first().fill('test-token-1234')
+  await page.getByRole('button', { name: 'Anmelden' }).click()
+  await page.getByRole('button', { name: 'Los geht’s' }).click()
+
+  // Direkt in den Lesemodus
+  await page.goto('/documents/1/read')
+  const pageImage = page.locator('img[src^="blob:"]').first()
+  await expect(pageImage).toBeVisible({ timeout: 45_000 })
+  // Die gerenderte Seite muss echte Pixelmaße haben (nicht 0 → wäre blank)
+  const box = await pageImage.boundingBox()
+  expect(box?.width ?? 0).toBeGreaterThan(50)
+  expect(box?.height ?? 0).toBeGreaterThan(50)
+})
