@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { FileQuestion, LayoutGrid, List, Table2, CheckSquare, X } from 'lucide-react'
+import { FileQuestion, LayoutGrid, List, Table2, CheckSquare } from 'lucide-react'
 import { NativeSelect } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
-import { EmptyState, Skeleton, Badge } from '@/components/ui/misc'
+import { EmptyState, Skeleton } from '@/components/ui/misc'
 import { useT } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { useSettings, type DocumentViewMode } from '@/stores/settings'
@@ -143,58 +143,6 @@ export function DocumentListPage({ inboxOnly = false }: { inboxOnly?: boolean })
         <FilterPanel filters={filters} ordering={ordering} onChange={updateFilters} activeCount={activeCount} />
       </div>
 
-      {/* Aktive Filter als Chips */}
-      {activeCount > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {(filters.tags ?? []).map((tagId) => (
-            <FilterChip
-              key={`tag-${tagId}`}
-              label={lookups.tagById.get(tagId)?.name ?? `Tag ${tagId}`}
-              onRemove={() => updateFilters({ ...filters, tags: filters.tags?.filter((id) => id !== tagId) })}
-            />
-          ))}
-          {filters.correspondent != null && (
-            <FilterChip
-              label={
-                filters.correspondent === 'none'
-                  ? `${t('documents.filter.correspondent')}: ${t('common.none')}`
-                  : (lookups.correspondentById.get(filters.correspondent)?.name ?? '')
-              }
-              onRemove={() => updateFilters({ ...filters, correspondent: undefined })}
-            />
-          )}
-          {filters.documentType != null && (
-            <FilterChip
-              label={
-                filters.documentType === 'none'
-                  ? `${t('documents.filter.documentType')}: ${t('common.none')}`
-                  : (lookups.documentTypeById.get(filters.documentType)?.name ?? '')
-              }
-              onRemove={() => updateFilters({ ...filters, documentType: undefined })}
-            />
-          )}
-          {filters.storagePath != null && (
-            <FilterChip
-              label={
-                filters.storagePath === 'none'
-                  ? `${t('documents.filter.storagePath')}: ${t('common.none')}`
-                  : (lookups.storagePathById.get(filters.storagePath)?.name ?? '')
-              }
-              onRemove={() => updateFilters({ ...filters, storagePath: undefined })}
-            />
-          )}
-          {filters.createdFrom && (
-            <FilterChip label={`≥ ${filters.createdFrom}`} onRemove={() => updateFilters({ ...filters, createdFrom: undefined })} />
-          )}
-          {filters.createdTo && (
-            <FilterChip label={`≤ ${filters.createdTo}`} onRemove={() => updateFilters({ ...filters, createdTo: undefined })} />
-          )}
-          {filters.inbox && !inboxOnly && (
-            <FilterChip label={t('documents.filter.inbox')} onRemove={() => updateFilters({ ...filters, inbox: undefined })} />
-          )}
-        </div>
-      )}
-
       {/* Inhalt */}
       {query.isLoading ? (
         <SkeletonGrid mode={viewMode} />
@@ -243,17 +191,6 @@ export function DocumentListPage({ inboxOnly = false }: { inboxOnly?: boolean })
         />
       )}
     </div>
-  )
-}
-
-function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <Badge className="bg-accent-soft text-accent">
-      {label}
-      <button onClick={onRemove} aria-label="remove" className="hover:opacity-70">
-        <X className="size-3" />
-      </button>
-    </Badge>
   )
 }
 

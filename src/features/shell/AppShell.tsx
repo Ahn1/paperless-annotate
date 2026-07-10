@@ -10,6 +10,7 @@ import {
   WifiOff,
   Bookmark,
   Tags,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -34,6 +35,7 @@ const primaryNav: NavItem[] = [
 const secondaryNav: NavItem[] = [
   { to: '/manage', key: 'nav.manage', icon: Tags },
   { to: '/trash', key: 'nav.trash', icon: Trash2 },
+  { to: '/welcome', key: 'nav.projectPage', icon: Sparkles },
   { to: '/settings', key: 'nav.settings', icon: Settings },
 ]
 

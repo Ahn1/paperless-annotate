@@ -11,7 +11,11 @@
     "lint": "eslint src",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "docker:build": "docker compose -f deploy/docker-compose.yml build",
+    "docker:start": "docker compose -f deploy/docker-compose.yml up -d",
+    "docker:stop": "docker compose -f deploy/docker-compose.yml down",
+    "docker:update": "bash deploy/update.sh"
   },
   "dependencies": {
     "@embedpdf/core": "^2.14.4",

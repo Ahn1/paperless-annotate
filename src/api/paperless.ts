@@ -23,14 +23,20 @@ import type {
 export function filtersToParams(filters: DocumentFilters): Record<string, string | number | boolean | undefined> {
   const params: Record<string, string | number | boolean | undefined> = {}
   if (filters.query) params.query = filters.query
+  if (filters.titleContent) params.title_content = filters.titleContent
   if (filters.tags?.length) params.tags__id__all = filters.tags.join(',')
+  if (filters.tagsAny?.length) params.tags__id__in = filters.tagsAny.join(',')
   if (filters.tagsExclude?.length) params.tags__id__none = filters.tagsExclude.join(',')
+  if (filters.tagged != null) params.is_tagged = filters.tagged
   if (filters.correspondent === 'none') params.correspondent__isnull = true
   else if (filters.correspondent != null) params.correspondent__id = filters.correspondent
+  if (filters.correspondentAny?.length) params.correspondent__id__in = filters.correspondentAny.join(',')
   if (filters.documentType === 'none') params.document_type__isnull = true
   else if (filters.documentType != null) params.document_type__id = filters.documentType
+  if (filters.documentTypeAny?.length) params.document_type__id__in = filters.documentTypeAny.join(',')
   if (filters.storagePath === 'none') params.storage_path__isnull = true
   else if (filters.storagePath != null) params.storage_path__id = filters.storagePath
+  if (filters.storagePathAny?.length) params.storage_path__id__in = filters.storagePathAny.join(',')
   if (filters.createdFrom) params.created__date__gte = filters.createdFrom
   if (filters.createdTo) params.created__date__lte = filters.createdTo
   if (filters.addedFrom) params.added__date__gte = filters.addedFrom

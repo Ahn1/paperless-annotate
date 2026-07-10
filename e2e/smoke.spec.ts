@@ -187,6 +187,20 @@ test('Login → Dokument öffnen → annotieren → Version hochladen', async ({
   await expect(page.getByRole('heading', { name: 'Testdokument' })).toBeVisible({ timeout: 15_000 })
 })
 
+test('Ohne Profil landet man auf der Landing Page und gelangt von dort ins Setup', async ({ page }) => {
+  await mockPaperlessApi(page, () => undefined)
+
+  // Root ohne eingerichtetes Profil → Landing Page
+  await page.goto('/')
+  await expect(page).toHaveURL(/\/welcome$/)
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Paperless')
+
+  // CTA führt ins Onboarding
+  await page.getByRole('button', { name: 'Jetzt einrichten' }).first().click()
+  await expect(page).toHaveURL(/\/onboarding$/)
+  await expect(page.getByText('Mit Paperless verbinden')).toBeVisible()
+})
+
 test('Onboarding warnt bei Paperless v2, dass als neues Dokument gespeichert wird', async ({ page }) => {
   await mockPaperlessApi(page, () => undefined, { v2: true })
 

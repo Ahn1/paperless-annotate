@@ -1,0 +1,19 @@
+name: paperless-annotator
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: paperless-annotator:latest
+    restart: unless-stopped
+    # Kein container_name: update.sh skaliert beim Update kurzzeitig auf 2 Instanzen
+    networks:
+      - caddy
+    labels:
+      caddy: ${APP_DOMAIN:-annotate.paper.flarandr.de}
+      caddy.reverse_proxy: "{{upstreams 8080}}"
+
+networks:
+  caddy:
+    external: true

@@ -1,0 +1,13 @@
+node_modules
+dist
+dev-dist
+.git
+docker
+deploy/.env
+e2e
+test-results
+playwright-report
+playwright.config.ts
+*.tsbuildinfo
+plan.md
+.env*

@@ -15,8 +15,9 @@ import { ManagePage } from '@/features/manage/ManagePage'
 import { TrashPage } from '@/features/trash/TrashPage'
 import { EditorPage } from '@/features/editor/EditorPage'
 import { ReaderPage } from '@/features/reader/ReaderPage'
+import { LandingPage } from '@/features/landing/LandingPage'
 
-/** Leitet je nach Session-Zustand um (kein Profil → Onboarding, 401 → Onboarding). */
+/** Leitet je nach Session-Zustand um (kein Profil → Landing Page, 401 → Onboarding). */
 function AuthGate({ children }: { children: React.ReactNode }) {
   const status = useSession((s) => s.status)
   const authError = useSession((s) => s.authError)
@@ -24,9 +25,11 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const location = useLocation()
 
   useEffect(() => {
-    if (status === 'no-profile' && location.pathname !== '/onboarding') {
-      navigate('/onboarding', { replace: true })
+    // Noch kein Profil eingerichtet → Landing Page (statt direkt ins Setup)
+    if (status === 'no-profile' && location.pathname !== '/welcome') {
+      navigate('/welcome', { replace: true })
     }
+    // Token ungültig geworden → zurück ins Onboarding zum erneuten Anmelden
     if (authError && location.pathname !== '/onboarding') {
       navigate('/onboarding', { replace: true })
     }
@@ -55,6 +58,7 @@ export default function App() {
       {/* BrowserRouter: Hosting braucht SPA-Fallback auf index.html (vite preview kann das; Caddy/nginx: try_files) */}
       <BrowserRouter>
         <Routes>
+          <Route path="/welcome" element={<LandingPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route
             path="/documents/:id/annotate"

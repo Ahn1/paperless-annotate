@@ -205,11 +205,19 @@ export type DocumentOrdering =
 
 export interface DocumentFilters {
   query?: string
+  /** Suche nur in Titel oder Inhalt (Paperless-Parameter title_content). */
+  titleContent?: string
   tags?: number[]
+  tagsAny?: number[]
   tagsExclude?: number[]
+  /** is_tagged: true = hat Tags, false = ohne Tags. */
+  tagged?: boolean
   correspondent?: number | 'none'
+  correspondentAny?: number[]
   documentType?: number | 'none'
+  documentTypeAny?: number[]
   storagePath?: number | 'none'
+  storagePathAny?: number[]
   createdFrom?: string
   createdTo?: string
   addedFrom?: string
