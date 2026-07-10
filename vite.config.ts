@@ -25,6 +25,10 @@ export default defineConfig({
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: 'icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
+        screenshots: [
+          { src: 'screenshots/wide.png', sizes: '3196x1715', type: 'image/png', form_factor: 'wide' },
+          { src: 'screenshots/high.png', sizes: '2077x1844', type: 'image/png' },
+        ],
       },
       workbox: {
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,

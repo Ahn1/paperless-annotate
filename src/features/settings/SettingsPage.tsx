@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { BookOpen, Check, LogOut, Moon, Paintbrush, Plus, Server, Sun, Trash2 } from 'lucide-react'
+import { BookOpen, Check, Download, LogOut, Moon, Paintbrush, Plus, Server, Sun, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { NativeSelect } from '@/components/ui/Input'
 import { SwitchRow } from '@/components/ui/Switch'
@@ -9,6 +9,7 @@ import { useT, useI18nStore, type Lang } from '@/lib/i18n'
 import { useThemeStore, type Accent, type ThemeMode } from '@/lib/theme'
 import { useSettings, type DocumentViewMode } from '@/stores/settings'
 import { useSession } from '@/stores/session'
+import { usePwaInstall } from '@/lib/pwaInstall'
 import { cn } from '@/lib/utils'
 
 export function SettingsPage() {
@@ -209,12 +210,44 @@ export function SettingsPage() {
         </pre>
       </Section>
 
+      {/* App-Installation (PWA) */}
+      <Section title={t('settings.app.title')} icon={<Download className="size-4" />}>
+        <InstallApp />
+      </Section>
+
       {/* Cache */}
       <Section title="Cache" icon={<Trash2 className="size-4" />}>
         <Button variant="outline" size="sm" onClick={() => void clearCache()}>
           {cacheCleared ? t('settings.cacheCleared') : t('settings.clearCache')}
         </Button>
       </Section>
+    </div>
+  )
+}
+
+/** Manueller PWA-Install-Trigger über das aufgeschobene beforeinstallprompt-Event. */
+function InstallApp() {
+  const t = useT()
+  const { canInstall, installed, promptInstall } = usePwaInstall()
+
+  if (installed) {
+    return (
+      <p className="ui-chrome flex items-center gap-2 text-sm text-ink-muted">
+        <Check className="size-4 text-accent" />
+        {t('settings.app.installed')}
+      </p>
+    )
+  }
+  if (!canInstall) {
+    return <p className="ui-chrome text-sm text-ink-muted">{t('settings.app.installUnavailable')}</p>
+  }
+  return (
+    <div>
+      <p className="ui-chrome mb-2 text-sm text-ink-muted">{t('settings.app.installHint')}</p>
+      <Button variant="outline" size="sm" onClick={() => void promptInstall()}>
+        <Download className="size-4" />
+        {t('settings.app.install')}
+      </Button>
     </div>
   )
 }
