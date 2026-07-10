@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+/* ---------- Design-Tokens: Tailwind v4 liest CSS-Variablen (Theme-Umschaltung = Variablen-Swap) ---------- */
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-fg: var(--accent-fg);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --radius-app: 0.75rem;
+}
+
+/* ---------- Helles Theme (Default) ---------- */
+:root {
+  --surface: oklch(0.985 0.002 90);
+  --surface-1: oklch(1 0 0);
+  --surface-2: oklch(0.955 0.003 90);
+  --surface-3: oklch(0.92 0.004 90);
+  --ink: oklch(0.21 0.01 260);
+  --ink-muted: oklch(0.45 0.015 260);
+  --ink-faint: oklch(0.62 0.012 260);
+  --line: oklch(0.88 0.004 90);
+  --danger: oklch(0.577 0.215 27);
+  --success: oklch(0.6 0.14 155);
+  --warning: oklch(0.72 0.15 70);
+  --accent-fg: oklch(1 0 0);
+  color-scheme: light;
+}
+
+/* ---------- Dunkles Theme ---------- */
+:root[data-theme="dark"] {
+  --surface: oklch(0.2 0.008 260);
+  --surface-1: oklch(0.24 0.009 260);
+  --surface-2: oklch(0.28 0.01 260);
+  --surface-3: oklch(0.33 0.011 260);
+  --ink: oklch(0.94 0.004 90);
+  --ink-muted: oklch(0.72 0.01 260);
+  --ink-faint: oklch(0.55 0.01 260);
+  --line: oklch(0.32 0.01 260);
+  color-scheme: dark;
+}
+
+/* ---------- AMOLED-Schwarz ---------- */
+:root[data-theme="amoled"] {
+  --surface: oklch(0 0 0);
+  --surface-1: oklch(0.13 0.005 260);
+  --surface-2: oklch(0.18 0.007 260);
+  --surface-3: oklch(0.24 0.009 260);
+  --ink: oklch(0.94 0.004 90);
+  --ink-muted: oklch(0.7 0.01 260);
+  --ink-faint: oklch(0.52 0.01 260);
+  --line: oklch(0.24 0.008 260);
+  color-scheme: dark;
+}
+
+/* ---------- Akzentfarbschemata ---------- */
+:root, :root[data-accent="blue"] {
+  --accent: oklch(0.55 0.19 255);
+  --accent-soft: oklch(0.55 0.19 255 / 0.14);
+}
+:root[data-accent="violet"] {
+  --accent: oklch(0.55 0.22 295);
+  --accent-soft: oklch(0.55 0.22 295 / 0.14);
+}
+:root[data-accent="green"] {
+  --accent: oklch(0.56 0.14 160);
+  --accent-soft: oklch(0.56 0.14 160 / 0.14);
+}
+:root[data-accent="amber"] {
+  --accent: oklch(0.66 0.15 60);
+  --accent-soft: oklch(0.66 0.15 60 / 0.16);
+}
+:root[data-theme="dark"], :root[data-theme="amoled"] {
+  &[data-accent="blue"], &:not([data-accent]) { --accent: oklch(0.68 0.17 255); --accent-soft: oklch(0.68 0.17 255 / 0.18); }
+  &[data-accent="violet"] { --accent: oklch(0.7 0.19 295); --accent-soft: oklch(0.7 0.19 295 / 0.18); }
+  &[data-accent="green"] { --accent: oklch(0.7 0.14 160); --accent-soft: oklch(0.7 0.14 160 / 0.18); }
+  &[data-accent="amber"] { --accent: oklch(0.75 0.15 65); --accent-soft: oklch(0.75 0.15 65 / 0.2); }
+}
+
+/* ---------- Basis / App-Gefühl ---------- */
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--surface);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none; /* Browser-Pull-to-Refresh unterdrücken */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* UI-Chrome fühlt sich wie App an: keine Textauswahl, keine Callouts */
+.ui-chrome {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Safe-Areas (Notch / Home-Indicator) */
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+.pl-safe { padding-left: env(safe-area-inset-left); }
+.pr-safe { padding-right: env(safe-area-inset-right); }
+
+/* Zeichenfläche des Editors */
+.annotation-surface {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Dezente Scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-faint) transparent;
+}
+
+/* View-Transition-Fallback */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-fade-in { animation: fade-in 0.18s ease-out; }
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+.animate-skeleton { animation: skeleton-pulse 1.4s ease-in-out infinite; }

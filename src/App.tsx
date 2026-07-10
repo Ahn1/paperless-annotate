@@ -1,0 +1,83 @@
+import { useEffect } from 'react'
+import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from '@/app/queryClient'
+import { useSession } from '@/stores/session'
+import { AppShell } from '@/features/shell/AppShell'
+import { OnboardingPage } from '@/features/onboarding/OnboardingPage'
+import { DocumentListPage } from '@/features/documents/DocumentListPage'
+import { SettingsPage } from '@/features/settings/SettingsPage'
+import { CenteredSpinner } from '@/components/ui/misc'
+import { DashboardPage } from '@/features/dashboard/DashboardPage'
+import { DocumentDetailPage } from '@/features/documents/detail/DocumentDetailPage'
+import { ManagePage } from '@/features/manage/ManagePage'
+import { TrashPage } from '@/features/trash/TrashPage'
+import { EditorPage } from '@/features/editor/EditorPage'
+
+/** Leitet je nach Session-Zustand um (kein Profil → Onboarding, 401 → Onboarding). */
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const status = useSession((s) => s.status)
+  const authError = useSession((s) => s.authError)
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  useEffect(() => {
+    if (status === 'no-profile' && location.pathname !== '/onboarding') {
+      navigate('/onboarding', { replace: true })
+    }
+    if (authError && location.pathname !== '/onboarding') {
+      navigate('/onboarding', { replace: true })
+    }
+  }, [status, authError, location.pathname, navigate])
+
+  if (status === 'loading') {
+    return (
+      <div className="flex h-dvh items-center justify-center">
+        <CenteredSpinner />
+      </div>
+    )
+  }
+  if (status !== 'ready') return null
+  return <>{children}</>
+}
+
+export default function App() {
+  const init = useSession((s) => s.init)
+  useEffect(() => {
+    void init()
+  }, [init])
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <HashRouter>
+        <Routes>
+          <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route
+            path="/documents/:id/annotate"
+            element={
+              <AuthGate>
+                <EditorPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            element={
+              <AuthGate>
+                <AppShell />
+              </AuthGate>
+            }
+          >
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/documents" element={<DocumentListPage />} />
+            <Route path="/documents/:id" element={<DocumentDetailPage />} />
+            <Route path="/inbox" element={<DocumentListPage inboxOnly />} />
+            <Route path="/manage/*" element={<ManagePage />} />
+            <Route path="/trash" element={<TrashPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </HashRouter>
+    </QueryClientProvider>
+  )
+}
