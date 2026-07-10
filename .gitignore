@@ -1,8 +1,43 @@
-node_modules
-dist
-dev-dist
+# Abhängigkeiten
+node_modules/
+
+# Build-Ausgaben
+dist/
+dev-dist/
+*.tsbuildinfo
+
+# Vite / Tooling-Caches
+.vite/
+.eslintcache
+coverage/
+
+# Tests
+playwright-report/
+test-results/
+/playwright/.cache/
+
+# Umgebungsvariablen (lokale Secrets)
+.env
+.env.*
 *.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Editor / IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Betriebssystem
 .DS_Store
-coverage
-playwright-report
-test-results
+Thumbs.db
+
+# Docker-Testdaten (docker compose aus Kap. 9)
+docker/data/
+docker/media/
+docker/export/
+docker/consume/

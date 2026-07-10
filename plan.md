@@ -276,7 +276,17 @@ Begründung Styling: Tailwind **v4** (nicht v3), weil das Theme-System (Hell/Dun
 
 **Bewusst verschoben:** Dashboard, Dokumentdetail, Stammdaten-Seiten, Papierkorb (Platzhalter-Routen existieren) → M2; Editor → M4; PIN-UI, verschachtelte Tags im Picker, Pull-to-Refresh, View Transitions → M5.
 
-### ⬜ M2 – Verwaltung
+### ✅ M2 – Verwaltung (fertig, 2026-07-10)
+
+**Umgesetzt:**
+
+- Dashboard ([src/features/dashboard/DashboardPage.tsx](src/features/dashboard/DashboardPage.tsx)): Statistik-Karten (`/api/statistics/`), Saved-View-Widgets (show_on_dashboard) mit Top-5-Dokumenten, „Zuletzt hinzugefügt“-Reihe, Upload-Zone
+- Upload ([UploadZone.tsx](src/features/dashboard/UploadZone.tsx)): Drag & Drop + Dateiauswahl, optionale Vorab-Metadaten (Titel/Tags/Korrespondent/Typ), Task-Verfolgung mit Polling auf `/api/tasks/` (3-s-Intervall solange Tasks laufen)
+- Dokumentdetail ([DocumentDetailPage.tsx](src/features/documents/detail/DocumentDetailPage.tsx)): Zwei-Spalten ≥768px / Tabs auf Phone; PDF-Vorschau als Blob-iframe ([PreviewPane.tsx](src/features/documents/detail/PreviewPane.tsx)); Metadaten-Formular mit Dirty-Tracking ([MetadataForm.tsx](src/features/documents/detail/MetadataForm.tsx)); Custom-Fields-Editor für alle Feldtypen ([CustomFieldsEditor.tsx](src/features/documents/detail/CustomFieldsEditor.tsx)); Notizen, OCR-Inhalt mit Copy, Datei-Infos (`/metadata/`), ähnliche Dokumente (`more_like_id`); Aktionen: Download Original/Archiv, Löschen, „Annotieren“-Button (Editor-Route), Inbox-„Erledigt“-Flow (entfernt Inbox-Tags, springt zurück zum Posteingang)
+- Stammdaten ([ManagePage.tsx](src/features/manage/ManagePage.tsx) + [CrudPage.tsx](src/features/manage/CrudPage.tsx)): generisches CRUD für Tags (Farbe, Parent, Inbox-Flag), Korrespondenten, Dokumenttypen, Speicherpfade – je mit Suche, Dokumentanzahl (verlinkt auf gefilterte Liste), Matching-Regeln (Algorithmus + Muster + Groß/klein); Custom Fields separat ([CustomFieldsPage.tsx](src/features/manage/CustomFieldsPage.tsx), inkl. Select-Optionen)
+- Papierkorb ([TrashPage.tsx](src/features/trash/TrashPage.tsx)): Auflisten, Wiederherstellen, Papierkorb leeren
+
+**Anmerkungen:** Besitzer/Berechtigungen-Editing und „Neu verarbeiten“ sind noch offen (kleiner Umfang, bei Bedarf in M5 nachziehen). „Teilen-Link“ hängt von Share-Links-API ab → M5-Kandidat.
 
 ### ⬜ M3 – Versionen
 
