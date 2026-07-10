@@ -1,4 +1,5 @@
 /** Typisierte Paperless-Endpunkte auf Basis des PaperlessClient. */
+import { ApiError } from './client'
 import type { PaperlessClient } from './client'
 import type {
   Correspondent,
@@ -115,6 +116,24 @@ export function createApi(client: PaperlessClient) {
 
     autocomplete(term: string, signal?: AbortSignal) {
       return client.get<string[]>('/api/search/autocomplete/', { term, limit: 8 }, signal)
+    },
+
+    /**
+     * Nächste freie ASN wie in der Paperless-UI. Ältere Server ohne den
+     * next_asn-Endpunkt (404) fallen auf höchste vergebene ASN + 1 zurück.
+     */
+    async nextAsn(): Promise<number> {
+      try {
+        return await client.get<number>('/api/documents/next_asn/')
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.status !== 404) throw error
+        const page = await client.get<Paginated<PaperlessDocument>>('/api/documents/', {
+          page_size: 1,
+          ordering: '-archive_serial_number',
+          truncate_content: true,
+        })
+        return (page.results[0]?.archive_serial_number ?? 0) + 1
+      }
     },
 
     // ---------- Notizen ----------

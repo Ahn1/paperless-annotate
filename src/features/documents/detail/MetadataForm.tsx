@@ -5,6 +5,7 @@ import { useT } from '@/lib/i18n'
 import { useLookups } from '@/hooks/data'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, NativeSelect } from '@/components/ui/Input'
+import { Plus } from 'lucide-react'
 import { TagPicker } from '@/features/documents/TagPicker'
 import { CustomFieldsEditor } from './CustomFieldsEditor'
 import type { CustomFieldInstance, PaperlessDocument } from '@/api/types'
@@ -67,6 +68,11 @@ export function MetadataForm({ document }: { document: PaperlessDocument }) {
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }))
 
+  const nextAsn = useMutation({
+    mutationFn: () => api.nextAsn(),
+    onSuccess: (asn) => set('archive_serial_number', String(asn)),
+  })
+
   return (
     <form
       className="space-y-4"
@@ -84,12 +90,26 @@ export function MetadataForm({ document }: { document: PaperlessDocument }) {
           <Input type="date" value={form.created} onChange={(e) => set('created', e.target.value)} />
         </Field>
         <Field label={t('detail.asn')}>
-          <Input
-            type="number"
-            inputMode="numeric"
-            value={form.archive_serial_number}
-            onChange={(e) => set('archive_serial_number', e.target.value)}
-          />
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              inputMode="numeric"
+              value={form.archive_serial_number}
+              onChange={(e) => set('archive_serial_number', e.target.value)}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="shrink-0"
+              title={t('detail.nextAsn')}
+              aria-label={t('detail.nextAsn')}
+              loading={nextAsn.isPending}
+              onClick={() => nextAsn.mutate()}
+            >
+              {!nextAsn.isPending && <Plus className="size-4" />}
+            </Button>
+          </div>
         </Field>
       </div>
 
