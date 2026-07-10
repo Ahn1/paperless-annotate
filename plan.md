@@ -347,7 +347,9 @@ Zusätzlich dokumentiert: `X-Api-Version`/`X-Version` sind cross-origin nur lesb
 
 **Nachfix (Race, 2026-07-10):** Beim App-Start laufen viele Requests parallel, alle noch gepinnt. Der erste 406 legte das Flag um – parallel laufende Requests (z. B. der PDF-Download → leerer Viewer) prüften danach `versionPinned === true`, wiederholten also nicht und schlugen fehl. Fix: pro Versuch wird festgehalten, ob *dieser* Request gepinnt gesendet wurde (`sentWithVersionPin`), und darauf der Retry gestützt. Regressionstest mit zwei parallelen Requests ergänzt (21 Tests grün). Außerdem zeigt [PreviewPane.tsx](src/features/documents/detail/PreviewPane.tsx) bei Ladefehlern jetzt einen Fehlerzustand statt Endlos-Spinner.
 
-**Stand v2-Kompatibilität:** Lesen/Verwalten (Liste, Suche, Detail, Metadaten, Stammdaten, Upload, Papierkorb, Vorschau, Lesemodus) funktioniert auf v2. Nicht verfügbar auf v2: Versions-Timeline (blendet sich automatisch aus, da `versions` im Serializer fehlt) und das Editor-Speichern als neue Version (`update_version` existiert nicht → würde 404 liefern). Offener Punkt: Fallback fürs Editor-Speichern auf v2 (z. B. als neues Dokument hochladen oder Button mit Hinweis deaktivieren).
+**Stand v2-Kompatibilität:** Lesen/Verwalten (Liste, Suche, Detail, Metadaten, Stammdaten, Upload, Papierkorb, Vorschau, Lesemodus) funktioniert auf v2. Versions-Timeline blendet sich automatisch aus (kein `versions`-Feld im Serializer).
+
+**Editor-Speichern auf v2 (umgesetzt, 2026-07-10):** Der Speichern-Dialog ([SaveVersionDialog.tsx](src/features/editor/SaveVersionDialog.tsx)) erkennt Server ohne Versions-Unterstützung am fehlenden `versions`-Array und lädt das annotierte PDF dann als **neues Dokument** hoch (`post_document`, Titel vorbelegt mit „… (annotiert DATUM)“, Tags/Korrespondent/Typ des Originals werden übernommen; Hinweis-Box erklärt den Unterschied). Das Original bleibt unverändert. Auf v3 unverändert: neue Version mit Label + Konfliktprüfung.
 
 ### ✨ Nachtrag: Lesemodus + Positions-Merken + BrowserRouter (2026-07-10)
 
