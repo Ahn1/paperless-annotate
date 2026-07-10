@@ -1,12 +1,15 @@
 import { useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { FileWarning } from 'lucide-react'
 import { useApi } from '@/stores/session'
-import { CenteredSpinner } from '@/components/ui/misc'
+import { useT } from '@/lib/i18n'
+import { CenteredSpinner, EmptyState } from '@/components/ui/misc'
 
 /** PDF-Vorschau: lädt /preview/ als Blob (Auth-Header) und zeigt es im iframe. */
 export function PreviewPane({ documentId, versionId, className }: { documentId: number; versionId?: number; className?: string }) {
+  const t = useT()
   const api = useApi()
-  const { data: blob, isLoading } = useQuery({
+  const { data: blob, isError } = useQuery({
     queryKey: [api.client.baseUrl, 'preview', documentId, versionId ?? null],
     queryFn: ({ signal }) => api.getPreviewBlob(documentId, versionId, signal),
     staleTime: 10 * 60 * 1000,
@@ -19,7 +22,14 @@ export function PreviewPane({ documentId, versionId, className }: { documentId: 
     }
   }, [url])
 
-  if (isLoading || !url) {
+  if (isError) {
+    return (
+      <div className={className}>
+        <EmptyState icon={FileWarning} title={t('editor.loadError')} />
+      </div>
+    )
+  }
+  if (!url) {
     return (
       <div className={className}>
         <CenteredSpinner />

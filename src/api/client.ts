@@ -121,6 +121,9 @@ export class PaperlessClient {
     let lastError: unknown
     for (let attempt = 0; attempt <= retries; attempt++) {
       if (attempt > 0) await new Promise((r) => setTimeout(r, 400 * 2 ** (attempt - 1)))
+      // Pro Versuch festhalten, ob DIESER Request gepinnt gesendet wurde: parallele Requests
+      // können das Flag währenddessen umlegen, der 406-Retry muss trotzdem greifen.
+      const sentWithVersionPin = this.versionPinned
       const headers: Record<string, string> = {
         ...this.authHeader(),
         Accept: this.acceptHeader(),
@@ -138,7 +141,7 @@ export class PaperlessClient {
       this.captureServerInfo(response)
 
       // Älterer Server (z. B. v2) kennt die gepinnte API-Version nicht → ohne Pin sofort erneut versuchen
-      if (response.status === 406 && this.versionPinned) {
+      if (response.status === 406 && sentWithVersionPin) {
         this.versionPinned = false
         attempt--
         continue
