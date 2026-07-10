@@ -288,7 +288,18 @@ Begründung Styling: Tailwind **v4** (nicht v3), weil das Theme-System (Hell/Dun
 
 **Anmerkungen:** Besitzer/Berechtigungen-Editing und „Neu verarbeiten“ sind noch offen (kleiner Umfang, bei Bedarf in M5 nachziehen). „Teilen-Link“ hängt von Share-Links-API ab → M5-Kandidat.
 
-### ⬜ M3 – Versionen
+### ✅ M3 – Versionen (fertig, 2026-07-10)
+
+**Umgesetzt** ([VersionsSection.tsx](src/features/documents/detail/VersionsSection.tsx) im Dokumentdetail):
+
+- Versions-Timeline mit Label, Datum, „Aktuell“-Badge (nutzt `versions`-Array + `root_document` aus dem Dokument-Serializer; Fallback: neueste Version = aktuell)
+- Aktionen pro Version: Ansehen (Preview-Dialog mit `?version=`), Herunterladen (`original=true&version=`), Label umbenennen (`PATCH /versions/{id}/`), Löschen mit Bestätigung (`DELETE /versions/{id}/`, ausgeblendet wenn nur eine Version)
+- Vergleichsansicht: Vergleichen-Modus → zwei Versionen antippen → Side-by-Side-Dialog mit zwei Previews
+- „Diese Version annotieren“ → Route `/documents/{rootId}/annotate?version={id}` (Editor kommt in M4)
+
+**Hinweis:** Exakte Feldnamen der Versions-API (`versions`, `root_document`, `is_current`) sind gegen Kap. 13 abzugleichen, sobald eine echte v3-Instanz zum Testen läuft (docker compose in M5).
+
+### ⬜ M4 – Annotation-Editor
 
 ### ⬜ M4 – Annotation-Editor
 

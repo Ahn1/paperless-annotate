@@ -186,6 +186,17 @@ const de = {
   'trash.empty': 'Papierkorb leeren',
   'trash.emptyState': 'Der Papierkorb ist leer',
   'trash.deletedAt': 'Gelöscht am',
+  'versions.title': 'Versionen',
+  'versions.current': 'Aktuell',
+  'versions.original': 'Original',
+  'versions.label': 'Bezeichnung',
+  'versions.rename': 'Bezeichnung ändern',
+  'versions.view': 'Ansehen',
+  'versions.compare': 'Vergleichen',
+  'versions.compareHint': 'Zwei Versionen auswählen',
+  'versions.annotateThis': 'Diese Version annotieren',
+  'versions.deleteConfirm': 'Diese Version endgültig löschen?',
+  'versions.uploadHint': 'Neue Versionen entstehen beim Speichern im Annotation-Editor.',
 } as const
 
 export type TranslationKey = keyof typeof de
@@ -373,6 +384,17 @@ const en: Record<TranslationKey, string> = {
   'trash.empty': 'Empty trash',
   'trash.emptyState': 'Trash is empty',
   'trash.deletedAt': 'Deleted at',
+  'versions.title': 'Versions',
+  'versions.current': 'Current',
+  'versions.original': 'Original',
+  'versions.label': 'Label',
+  'versions.rename': 'Rename label',
+  'versions.view': 'View',
+  'versions.compare': 'Compare',
+  'versions.compareHint': 'Select two versions',
+  'versions.annotateThis': 'Annotate this version',
+  'versions.deleteConfirm': 'Delete this version permanently?',
+  'versions.uploadHint': 'New versions are created when saving in the annotation editor.',
 }
 
 const dictionaries: Record<Lang, Record<TranslationKey, string>> = { de, en }
