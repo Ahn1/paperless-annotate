@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Check, LogOut, Moon, Paintbrush, Plus, Server, Sun, Trash2 } from 'lucide-react'
+import { BookOpen, Check, LogOut, Moon, Paintbrush, Plus, Server, Sun, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { NativeSelect } from '@/components/ui/Input'
 import { SwitchRow } from '@/components/ui/Switch'
@@ -95,6 +95,16 @@ export function SettingsPage() {
             </NativeSelect>
           </label>
         </div>
+      </Section>
+
+      {/* Lesen */}
+      <Section title={t('settings.reading')} icon={<BookOpen className="size-4" />}>
+        <SwitchRow
+          label={t('settings.rememberPosition')}
+          hint={t('settings.rememberPositionHint')}
+          checked={settings.rememberPdfPosition}
+          onCheckedChange={(v) => settings.set({ rememberPdfPosition: v })}
+        />
       </Section>
 
       {/* Stift */}

@@ -25,20 +25,36 @@ export interface AnnotationDraft {
   payload: unknown
 }
 
+/** Zuletzt gelesene Position in einem PDF (Lesemodus), pro Dokument/Version lokal. */
+export interface ReadingPosition {
+  /** `${profileId}:${documentId}:${versionId ?? 'current'}` */
+  key: string
+  scrollTop: number
+  scrollLeft: number
+  zoom: number | null
+  updatedAt: string
+}
+
 interface AppDB extends DBSchema {
   profiles: { key: string; value: ServerProfile }
   kv: { key: string; value: unknown }
   drafts: { key: string; value: AnnotationDraft }
+  positions: { key: string; value: ReadingPosition }
 }
 
 let dbPromise: Promise<IDBPDatabase<AppDB>> | null = null
 
 export function getDb() {
-  dbPromise ??= openDB<AppDB>('paperless-annotator', 1, {
-    upgrade(db) {
-      db.createObjectStore('profiles', { keyPath: 'id' })
-      db.createObjectStore('kv')
-      db.createObjectStore('drafts', { keyPath: 'key' })
+  dbPromise ??= openDB<AppDB>('paperless-annotator', 2, {
+    upgrade(db, oldVersion) {
+      if (oldVersion < 1) {
+        db.createObjectStore('profiles', { keyPath: 'id' })
+        db.createObjectStore('kv')
+        db.createObjectStore('drafts', { keyPath: 'key' })
+      }
+      if (oldVersion < 2) {
+        db.createObjectStore('positions', { keyPath: 'key' })
+      }
     },
   })
   return dbPromise
@@ -68,6 +84,21 @@ export const profileStore = {
   },
   async del(id: string): Promise<void> {
     await (await getDb()).delete('profiles', id)
+  },
+}
+
+export const positionStore = {
+  key(profileId: string, documentId: number, versionId: number | null) {
+    return `${profileId}:${documentId}:${versionId ?? 'current'}`
+  },
+  async get(key: string): Promise<ReadingPosition | undefined> {
+    return (await getDb()).get('positions', key)
+  },
+  async put(position: ReadingPosition): Promise<void> {
+    await (await getDb()).put('positions', position)
+  },
+  async del(key: string): Promise<void> {
+    await (await getDb()).delete('positions', key)
   },
 }
 

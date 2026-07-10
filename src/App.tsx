@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/app/queryClient'
 import { useSession } from '@/stores/session'
@@ -14,6 +14,7 @@ import { DocumentDetailPage } from '@/features/documents/detail/DocumentDetailPa
 import { ManagePage } from '@/features/manage/ManagePage'
 import { TrashPage } from '@/features/trash/TrashPage'
 import { EditorPage } from '@/features/editor/EditorPage'
+import { ReaderPage } from '@/features/reader/ReaderPage'
 
 /** Leitet je nach Session-Zustand um (kein Profil → Onboarding, 401 → Onboarding). */
 function AuthGate({ children }: { children: React.ReactNode }) {
@@ -51,7 +52,8 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <HashRouter>
+      {/* BrowserRouter: Hosting braucht SPA-Fallback auf index.html (vite preview kann das; Caddy/nginx: try_files) */}
+      <BrowserRouter>
         <Routes>
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route
@@ -59,6 +61,14 @@ export default function App() {
             element={
               <AuthGate>
                 <EditorPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/documents/:id/read"
+            element={
+              <AuthGate>
+                <ReaderPage />
               </AuthGate>
             }
           />
@@ -79,7 +89,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
-      </HashRouter>
+      </BrowserRouter>
     </QueryClientProvider>
   )
 }

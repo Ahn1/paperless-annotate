@@ -2,7 +2,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as Tabs from '@radix-ui/react-tabs'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { ArrowLeft, Check, Download, FileQuestion, MoreVertical, PenLine, Trash2 } from 'lucide-react'
+import { ArrowLeft, BookOpen, Check, Download, FileQuestion, MoreVertical, PenLine, Trash2 } from 'lucide-react'
 import { useApi } from '@/stores/session'
 import { useT } from '@/lib/i18n'
 import { useTags } from '@/hooks/data'
@@ -96,6 +96,11 @@ export function DocumentDetailPage() {
             <span className="hidden sm:inline">{t('detail.inboxDone')}</span>
           </Button>
         )}
+
+        <Button variant="outline" size="sm" onClick={() => navigate(`/documents/${document.id}/read`)}>
+          <BookOpen className="size-4" />
+          <span className="hidden sm:inline">{t('reader.open')}</span>
+        </Button>
 
         <Button size="sm" onClick={() => navigate(`/documents/${document.id}/annotate`)}>
           <PenLine className="size-4" />

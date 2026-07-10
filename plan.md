@@ -109,6 +109,8 @@ Begründung Styling: Tailwind **v4** (nicht v3), weil das Theme-System (Hell/Dun
 - Metadaten-Panel: Dateigröße, Checksummen, Mime-Type, Seitenzahl
 - Ähnliche Dokumente ("more like this")
 - Aktionen: Download (Original/Archiv), Teilen-Link erstellen, Löschen (in Papierkorb), Neu verarbeiten
+- **Lesemodus:** Button im Dokumentdetail öffnet das PDF im Vollbild (schlanker Viewer ohne Annotations-Werkzeuge: Seitenanzeige, Zoom, Daumenkino, Seitenzähler)
+- **Position im PDF merken** (optional, Einstellung): Beim Öffnen im Lesemodus an die zuletzt gelesene Stelle scrollen; Position wird pro Dokument/Version lokal (IndexedDB) gespeichert, keine Server-Synchronisation
 
 ### 4.5 Versionsverwaltung (UI)
 
@@ -208,7 +210,7 @@ Begründung Styling: Tailwind **v4** (nicht v3), weil das Theme-System (Hell/Dun
 - **Ersteinrichtung:** Server-URL eingeben → Verbindungstest (Erreichbarkeit, API-Version, CORS-Fehler verständlich erklären) → Token oder Login → fertig
 - Ersteinrichtung am besten als "wizard" (bitte nicht so nennen), also schritt für schritt mit jeweils prüfung, ob was fehlerhaft ist.
 - Mehrere Server-Profile unterstützen (umschaltbar)
-- Einstellungen: Theme, Standard-Dokumentansicht, Seitenformat Datum, Sprache (i18n-Grundgerüst, DE + EN), Stift-Optionen, Cache leeren, Abmelden (löscht Zugangsdaten lokal)
+- Einstellungen: Theme, Standard-Dokumentansicht, Seitenformat Datum, Sprache (i18n-Grundgerüst, DE + EN), Stift-Optionen, „Position im PDF merken“ (Lesemodus), Cache leeren, Abmelden (löscht Zugangsdaten lokal)
 
 ---
 
@@ -343,10 +345,16 @@ Test gegen eine echte Paperless-**v2**-Instanz deckte zwei Probleme im Verbindun
 
 Zusätzlich dokumentiert: `X-Api-Version`/`X-Version` sind cross-origin nur lesbar, wenn der Server sie via `Access-Control-Expose-Headers` freigibt – sonst entfällt die „Server älter als v3“-Warnung stillschweigend. 3 neue Unit-Tests ([client-version.test.ts](src/api/client-version.test.ts)), gesamt 20, alle grün; E2E weiterhin grün.
 
+### ✨ Nachtrag: Lesemodus + Positions-Merken + BrowserRouter (2026-07-10)
+
+- **Lesemodus** ([src/features/reader/](src/features/reader/)): Route `/documents/:id/read` (optional `?version=`), Button im Dokumentdetail. Schlanker EmbedPDF-Vollbild-Viewer (DocumentManager/Viewport/Scroll/Render/Zoom/Thumbnail, `withAnnotations:true` – vorhandene Annotationen sichtbar, aber nicht editierbar), Kopfleiste mit Zurück, Daumenkino, Seitenzähler, Zoom. Lazy geladen wie der Editor. Bewusst kein iframe: Nur mit eigenem Viewer ist die Scroll-Position zugreifbar.
+- **Position im PDF merken** (Einstellung „Lesen“, Standard: an): `onScrollChange` (debounced 800 ms) speichert `scrollTop/scrollLeft/zoom` pro `${profil}:${dokument}:${version}` im neuen IndexedDB-Store `positions` (DB-Version 2, [db.ts](src/lib/db.ts)); beim Öffnen wird nach Layout-Ready Zoom + Position wiederhergestellt (mit Hinweis-Toast). Erst nach erfolgtem Restore wird wieder gespeichert (kein Überschreiben durch initiales Scroll-Event).
+- **Routing umgestellt:** HashRouter → **BrowserRouter** (Nutzerwunsch). Achtung fürs Hosting: Server braucht SPA-Fallback auf `index.html` (nginx `try_files`, Caddy `try_files {path} /index.html`); `vite preview`/Dev-Server können es, der Workbox-`navigateFallback` deckt die installierte PWA ab.
+
 **Fortsetzungshinweise:**
 
 - Befehle: `npm run dev` (Entwicklung), `npm run build` (tsc + vite build), `npm run typecheck`, `npm test`
-- Routing ist HashRouter (PWA-freundlich ohne Server-Rewrites); Routen in [src/App.tsx](src/App.tsx)
+- Routing ist BrowserRouter – Hosting braucht SPA-Fallback auf index.html (siehe Nachtrag oben); Routen in [src/App.tsx](src/App.tsx)
 - Neue API-Aufrufe immer in [src/api/paperless.ts](src/api/paperless.ts) ergänzen, Komponenten nutzen `useApi()` aus [src/stores/session.ts](src/stores/session.ts)
 - Query-Keys beginnen mit `api.client.baseUrl`, damit Profilwechsel den Cache sauber trennt
 

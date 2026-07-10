@@ -233,6 +233,11 @@ const de = {
   'pin.disable': 'PIN entfernen',
   'pin.set': 'PIN festlegen',
   'pin.hint': 'Das Zugriffstoken wird mit einem aus der PIN abgeleiteten Schlüssel verschlüsselt (WebCrypto). Beim App-Start wird die PIN abgefragt.',
+  'reader.open': 'Lesemodus',
+  'reader.positionRestored': 'Letzte Position wiederhergestellt',
+  'settings.reading': 'Lesen',
+  'settings.rememberPosition': 'Position im PDF merken',
+  'settings.rememberPositionHint': 'Beim Öffnen im Lesemodus an die zuletzt gelesene Stelle springen (wird pro Dokument lokal gespeichert).',
 } as const
 
 export type TranslationKey = keyof typeof de
@@ -467,6 +472,11 @@ const en: Record<TranslationKey, string> = {
   'pin.disable': 'Remove PIN',
   'pin.set': 'Set PIN',
   'pin.hint': 'The access token is encrypted with a key derived from the PIN (WebCrypto). The PIN is requested at app start.',
+  'reader.open': 'Reading mode',
+  'reader.positionRestored': 'Restored last position',
+  'settings.reading': 'Reading',
+  'settings.rememberPosition': 'Remember position in PDF',
+  'settings.rememberPositionHint': 'When opening in reading mode, jump to where you left off (stored locally per document).',
 }
 
 const dictionaries: Record<Lang, Record<TranslationKey, string>> = { de, en }

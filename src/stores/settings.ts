@@ -10,6 +10,8 @@ interface SettingsState {
   penPressure: boolean
   penColor: string
   penWidth: number
+  /** Lesemodus: Scroll-Position pro Dokument lokal merken und wiederherstellen. */
+  rememberPdfPosition: boolean
   setViewMode: (mode: DocumentViewMode) => void
   set: (partial: Partial<SettingsState>) => void
 }
@@ -23,6 +25,7 @@ export const useSettings = create<SettingsState>()(
       penPressure: true,
       penColor: '#e03131',
       penWidth: 2.5,
+      rememberPdfPosition: true,
       setViewMode: (viewMode) => set({ viewMode }),
       set: (partial) => set(partial),
     }),
