@@ -26,10 +26,12 @@ export function OnboardingPage() {
   const [step, setStep] = useState<Step>(0)
   const [probeResult, setProbeResult] = useState<ProbeOk | null>(null)
   const [profileName, setProfileName] = useState('')
+  const [isV2, setIsV2] = useState(false)
 
   const steps = [t('onboarding.serverStep'), t('onboarding.authStep'), t('onboarding.doneStep')]
 
-  async function finish(token: string) {
+  async function finish(token: string, detectedV2: boolean) {
+    setIsV2(detectedV2)
     if (!probeResult) return
     const profile: ServerProfile = {
       id: crypto.randomUUID(),
@@ -83,6 +85,13 @@ export function OnboardingPage() {
             <div className="ui-chrome flex flex-col items-center gap-4 py-6 text-center">
               <PartyPopper className="size-12 text-accent" />
               <p className="text-ink">{t('onboarding.doneText')}</p>
+              {isV2 && (
+                <div className="w-full text-left">
+                  <InfoBox>
+                    <span className="font-semibold">{t('onboarding.v2Detected')}.</span> {t('onboarding.v2Hint')}
+                  </InfoBox>
+                </div>
+              )}
               <Button size="lg" onClick={() => navigate('/', { replace: true })}>
                 {t('onboarding.start')}
               </Button>
@@ -182,7 +191,15 @@ function ServerStep({ onDone }: { onDone: (result: ProbeOk, profileName: string)
   )
 }
 
-function AuthStep({ baseUrl, onDone, onBack }: { baseUrl: string; onDone: (token: string) => Promise<void>; onBack: () => void }) {
+function AuthStep({
+  baseUrl,
+  onDone,
+  onBack,
+}: {
+  baseUrl: string
+  onDone: (token: string, isV2: boolean) => Promise<void>
+  onBack: () => void
+}) {
   const t = useT()
   const [method, setMethod] = useState<'credentials' | 'token'>('credentials')
   const [username, setUsername] = useState('')
@@ -199,7 +216,8 @@ function AuthStep({ baseUrl, onDone, onBack }: { baseUrl: string; onDone: (token
       // Token validieren, bevor das Profil gespeichert wird
       const client = new PaperlessClient(baseUrl, finalToken)
       await client.get('/api/documents/', { page_size: 1 })
-      await onDone(finalToken)
+      // Nach dem gepinnten Request steht fest, ob der Server v3 (Pin akzeptiert) oder v2 (406 → Downgrade) ist
+      await onDone(finalToken, client.versionDowngraded)
     } catch {
       setError(t('onboarding.loginFailed'))
     } finally {

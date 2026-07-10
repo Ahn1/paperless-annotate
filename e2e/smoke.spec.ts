@@ -64,13 +64,29 @@ function json(route: Route, body: unknown, status = 200) {
   })
 }
 
-async function mockPaperlessApi(page: Page, onVersionUpload: (postData: Buffer) => void) {
+async function mockPaperlessApi(
+  page: Page,
+  onVersionUpload: (postData: Buffer) => void,
+  opts: { v2?: boolean } = {},
+) {
   const pdf = buildMinimalPdf()
 
   await page.route(`${BASE}/**`, async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname
     const method = route.request().method()
+
+    // v2-Server: lehnt den gepinnten Accept-Header (version=10) mit 406 ab
+    if (opts.v2) {
+      const accept = route.request().headers()['accept'] ?? ''
+      if (accept.includes('version=')) {
+        return route.fulfill({
+          status: 406,
+          contentType: 'application/json',
+          body: JSON.stringify({ detail: 'Ungültige Version in der "Accept" Kopfzeile.' }),
+        })
+      }
+    }
 
     if (method === 'POST' && path === '/api/documents/1/update_version/') {
       onVersionUpload(route.request().postDataBuffer() ?? Buffer.alloc(0))
@@ -169,6 +185,21 @@ test('Login → Dokument öffnen → annotieren → Version hochladen', async ({
 
   // Zurück im Dokumentdetail
   await expect(page.getByRole('heading', { name: 'Testdokument' })).toBeVisible({ timeout: 15_000 })
+})
+
+test('Onboarding warnt bei Paperless v2, dass als neues Dokument gespeichert wird', async ({ page }) => {
+  await mockPaperlessApi(page, () => undefined, { v2: true })
+
+  await page.goto('/')
+  await page.getByPlaceholder('https://paperless.example.com').fill(BASE)
+  await page.getByRole('button', { name: 'Verbindung prüfen' }).click()
+  await page.getByRole('button', { name: 'Mit API-Token' }).click()
+  await page.locator('form input').first().fill('test-token-1234')
+  await page.getByRole('button', { name: 'Anmelden' }).click()
+
+  // Auf der Fertig-Seite muss der v2-Hinweis erscheinen
+  await expect(page.getByText('Paperless v2 erkannt')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText(/als neues Dokument gespeichert/)).toBeVisible()
 })
 
 test('Lesemodus rendert die PDF-Seite', async ({ page }) => {
