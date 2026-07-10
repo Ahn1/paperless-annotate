@@ -299,9 +299,26 @@ Begründung Styling: Tailwind **v4** (nicht v3), weil das Theme-System (Hell/Dun
 
 **Hinweis:** Exakte Feldnamen der Versions-API (`versions`, `root_document`, `is_current`) sind gegen Kap. 13 abzugleichen, sobald eine echte v3-Instanz zum Testen läuft (docker compose in M5).
 
-### ⬜ M4 – Annotation-Editor
+### ✅ M4 – Annotation-Editor (fertig, 2026-07-10)
 
-### ⬜ M4 – Annotation-Editor
+**Umgesetzt** (Ordner [src/features/editor/](src/features/editor/)):
+
+- EmbedPDF 2.14.4 integriert; PDFium läuft im Web Worker, WASM wird lokal gebundelt (`@embedpdf/pdfium/pdfium.wasm?url`, kein CDN → offlinefähig). Editor + Engine sind per `lazy()` code-gesplittet und laden erst beim Öffnen ([EditorPage.tsx](src/features/editor/EditorPage.tsx))
+- **Wichtig:** In EmbedPDF 2.x heißt der Loader `@embedpdf/plugin-document-manager` (nicht `plugin-loader`, der ist 1.x-only); Dokument wird per `initialDocuments: [{ buffer, documentId, autoActivate }]` aus dem ArrayBuffer geladen (immer `original=true` der gewählten Version)
+- Plugin-Aufbau in [PdfEditor.tsx](src/features/editor/PdfEditor.tsx): DocumentManager, Viewport, Scroll, Render (`withAnnotations:false`, damit Annotationen editierbar im Layer bleiben), Zoom (FitWidth), InteractionManager, Selection, History, Annotation (`autoCommit:true`), Export, Thumbnail
+- Werkzeuge ([EditorToolbar.tsx](src/features/editor/EditorToolbar.tsx)): Auswahl, Stift (`ink`), Textmarker (`inkHighlighter`), Text-Highlight auf Textauswahl (`highlight` + SelectionLayer), Textfeld (`freeText`, per Tipp platzieren, verschieb-/skalierbar über AnnotationLayer-Handles, editAfterCreate), Radierer; erneuter Tipp aufs aktive Werkzeug öffnet Optionen (Farbpalette + freie Farbe, Strichstärke-Slider, „Auch Finger zeichnet“)
+- Radierer ([EraserLayer.tsx](src/features/editor/EraserLayer.tsx)): Overlay pro Seite, tippen/streichen löscht einzelne Annotation-Objekte (Rect-Hit-Test mit Toleranz, Koordinaten via Zoom-State zurückgerechnet); per Undo rückholbar
+- Undo/Redo über History-Plugin (Buttons mit canUndo/canRedo-Status)
+- **Palm Rejection:** Zeichenmodi (`ink`, `inkHighlighter`) werden mit `wantsRawTouch:false` re-registriert, solange „Auch Finger zeichnet“ aus ist → Touch scrollt/zoomt, nur der Stift zeichnet ([EditorInner.tsx](src/features/editor/EditorInner.tsx))
+- **Entwurfsschutz:** Session-Annotationen (per `onAnnotationEvent` verfolgt) werden debounced (3 s) + alle 30 s + bei visibilitychange/beforeunload als `exportAnnotations()`-Transfer-Items in IndexedDB gespeichert; beim Öffnen Wiederherstellen/Verwerfen-Banner; Verlassen mit ungespeicherten Änderungen fragt nach
+- **Speichern** ([SaveVersionDialog.tsx](src/features/editor/SaveVersionDialog.tsx)): `saveAsCopy()` → Blob → `POST /api/documents/{id}/update_version/` mit vorausgefülltem Label „Annotiert YYYY-MM-DD“; Konfliktprüfung (neuere Version auf dem Server → Nachfrage); danach Draft löschen, Caches invalidieren, zurück zum Dokumentdetail
+- Daumenkino-Leiste ([ThumbnailsDrawer.tsx](src/features/editor/ThumbnailsDrawer.tsx), einblendbar, springt zur Seite)
+
+**Bekannte Einschränkungen (auf Gerät zu verifizieren, siehe Kap. 13):**
+
+- Druckstärke→Strichstärke wird vom EmbedPDF-Ink-Tool nicht unterstützt (fester `strokeWidth`); Setting existiert, ist aber wirkungslos → ggf. Custom-Tool
+- Optionales Segmentieren langer Striche für partielles Radieren ist nicht umgesetzt (Radierer löscht ganze Objekte)
+- Palm Rejection/iOS-Scribble-Verhalten braucht einen Test auf echtem iPad (wantsRawTouch-Mechanik ist implementiert, Gerätetest steht aus)
 
 ### ⬜ M5 – Polish
 
