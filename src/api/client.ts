@@ -79,11 +79,20 @@ export class PaperlessClient {
   serverInfo: ServerInfo = { apiVersion: null, serverVersion: null }
   /** Wird bei 401 aufgerufen (z. B. zurück zum Login). */
   onUnauthorized: (() => void) | null = null
+  /**
+   * API-Version zunächst pinnen (v3 = 10). Ältere Server (v2) kennen die Version nicht
+   * und antworten mit 406 – dann wird automatisch ohne Version-Pin weitergearbeitet.
+   */
+  private versionPinned = true
 
   constructor(
     public readonly baseUrl: string,
     private readonly token: string,
   ) {}
+
+  private acceptHeader(): string {
+    return this.versionPinned ? `application/json; version=${API_VERSION}` : 'application/json'
+  }
 
   authHeader(): Record<string, string> {
     return { Authorization: `Token ${this.token}` }
@@ -102,21 +111,21 @@ export class PaperlessClient {
   async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const { method = 'GET', params, body, formData, signal, blob, retries = method === 'GET' ? 2 : 0 } = options
 
-    const headers: Record<string, string> = {
-      ...this.authHeader(),
-      Accept: `application/json; version=${API_VERSION}`,
-    }
     let requestBody: BodyInit | undefined
     if (formData) {
       requestBody = formData
     } else if (body !== undefined) {
-      headers['Content-Type'] = 'application/json'
       requestBody = JSON.stringify(body)
     }
 
     let lastError: unknown
     for (let attempt = 0; attempt <= retries; attempt++) {
       if (attempt > 0) await new Promise((r) => setTimeout(r, 400 * 2 ** (attempt - 1)))
+      const headers: Record<string, string> = {
+        ...this.authHeader(),
+        Accept: this.acceptHeader(),
+        ...(requestBody !== undefined && !formData ? { 'Content-Type': 'application/json' } : {}),
+      }
       let response: Response
       try {
         response = await fetch(this.url(path, params), { method, headers, body: requestBody, signal })
@@ -127,6 +136,13 @@ export class PaperlessClient {
       }
 
       this.captureServerInfo(response)
+
+      // Älterer Server (z. B. v2) kennt die gepinnte API-Version nicht → ohne Pin sofort erneut versuchen
+      if (response.status === 406 && this.versionPinned) {
+        this.versionPinned = false
+        attempt--
+        continue
+      }
 
       if (response.status === 401) {
         this.onUnauthorized?.()
@@ -206,18 +222,23 @@ function extractDetail(detail: unknown): string | undefined {
 }
 
 /**
- * Verbindungstest für das Onboarding – unauthentifiziert gegen /api/remote_version/ bzw. /api/.
+ * Verbindungstest für das Onboarding – unauthentifiziert gegen /api/documents/.
+ * Bewusst NICHT /api/ (leitet bei Paperless auf die HTML-only Schema-Ansicht um → 406)
+ * und ohne Version-Pin (ältere Server kennen die Version nicht → 406).
  * Unterscheidet: erreichbar / CORS-Problem / nicht erreichbar.
+ *
+ * Hinweis: X-Api-Version/X-Version sind cross-origin nur lesbar, wenn der Server sie
+ * per Access-Control-Expose-Headers freigibt – sonst bleiben sie null (keine Warnung möglich).
  */
 export async function probeServer(baseUrl: string): Promise<
   | { ok: true; apiVersion: number | null; serverVersion: string | null }
   | { ok: false; reason: 'cors' | 'unreachable' | 'not-paperless' }
 > {
   try {
-    const response = await fetch(`${baseUrl}/api/`, {
-      headers: { Accept: `application/json; version=${API_VERSION}` },
+    const response = await fetch(`${baseUrl}/api/documents/?page_size=1`, {
+      headers: { Accept: 'application/json' },
     })
-    // Auch 401 heißt: Server da und CORS ok
+    // Auch 401/403 heißt: Server da und CORS ok (Auth folgt im nächsten Schritt)
     const apiVersion = response.headers.get('X-Api-Version')
     const serverVersion = response.headers.get('X-Version')
     if (response.ok || response.status === 401 || response.status === 403) {
@@ -228,7 +249,7 @@ export async function probeServer(baseUrl: string): Promise<
     // fetch wirft sowohl bei CORS als auch bei Nicht-Erreichbarkeit. Heuristik:
     // Wenn ein no-cors-Request durchgeht, ist der Server da → CORS-Problem.
     try {
-      await fetch(`${baseUrl}/api/`, { mode: 'no-cors' })
+      await fetch(`${baseUrl}/api/documents/`, { mode: 'no-cors' })
       return { ok: false, reason: 'cors' }
     } catch {
       return { ok: false, reason: 'unreachable' }

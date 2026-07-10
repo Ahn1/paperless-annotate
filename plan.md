@@ -334,6 +334,15 @@ Begründung Styling: Tailwind **v4** (nicht v3), weil das Theme-System (Hell/Dun
 
 **Offen/nice-to-have:** Swipe-Aktionen auf Listenelementen, AMOLED als eigenes Manifest-theme_color, Lighthouse-Messung, ESLint/Prettier-Konfiguration, Besitzer/Berechtigungen-Editing, Teilen-Links.
 
+### 🔧 Nachtrag: Kompatibilitäts-Fix nach Test gegen echte Instanz (2026-07-10)
+
+Test gegen eine echte Paperless-**v2**-Instanz deckte zwei Probleme im Verbindungstest auf:
+
+1. `GET /api/` leitet bei Paperless auf `/api/schema/view/` um – eine HTML-only-Seite, die mit `Accept: application/json` **406** liefert. → `probeServer()` prüft jetzt gegen `/api/documents/?page_size=1` (echter JSON-Endpunkt, 401 = „Server da, Auth folgt“).
+2. Der gepinnte Header `Accept: application/json; version=10` führt bei v2-Servern (kennen Version 10 nicht) per DRF-Versionsverhandlung ebenfalls zu **406**. → Der Client pinnt jetzt **adaptiv**: erster 406 mit Pin → automatischer Retry ohne Version-Pin, Downgrade wird für alle Folge-Requests gemerkt ([client.ts](src/api/client.ts), `versionPinned`). v3-Server werden weiter mit `version=10` angesprochen.
+
+Zusätzlich dokumentiert: `X-Api-Version`/`X-Version` sind cross-origin nur lesbar, wenn der Server sie via `Access-Control-Expose-Headers` freigibt – sonst entfällt die „Server älter als v3“-Warnung stillschweigend. 3 neue Unit-Tests ([client-version.test.ts](src/api/client-version.test.ts)), gesamt 20, alle grün; E2E weiterhin grün.
+
 **Fortsetzungshinweise:**
 
 - Befehle: `npm run dev` (Entwicklung), `npm run build` (tsc + vite build), `npm run typecheck`, `npm test`
