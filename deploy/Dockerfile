@@ -1,10 +1,16 @@
 # Build-Stage: App mit Vite bauen (Kontext = Repo-Root, siehe deploy/docker-compose.yml)
 FROM node:22-alpine AS build
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
+# pnpm in der Version aus package.json ("packageManager") aktivieren
+RUN corepack enable
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY . .
-RUN npm run build
+# .git liegt nicht im Build-Kontext (.dockerignore) → Version kommt als Build-Arg
+# von deploy/update.sh; ohne Arg fällt vite.config.ts auf package.json zurück.
+ARG APP_VERSION
+ENV APP_VERSION=$APP_VERSION
+RUN pnpm run build
 
 # Runtime-Stage: statische Auslieferung
 FROM nginx:alpine-slim

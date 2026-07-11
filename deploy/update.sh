@@ -8,7 +8,10 @@ set -euo pipefail
 cd "$(dirname "$0")"
 compose() { docker compose -f docker-compose.yml "$@"; }
 
-echo "==> Baue neues Image..."
+# Version aus git ermitteln (Tag oder Tag-Abstand+Commit) und als Build-Arg durchreichen
+export APP_VERSION="$(git -C .. describe --tags --always 2>/dev/null || true)"
+
+echo "==> Baue neues Image (Version: ${APP_VERSION:-unbekannt})..."
 compose build app
 
 OLD_CONTAINERS=$(compose ps -q app)

@@ -5,6 +5,9 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
+      args:
+        # Wird von deploy/update.sh aus `git describe` gesetzt (siehe Dockerfile)
+        APP_VERSION: ${APP_VERSION:-}
     image: paperless-annotator:latest
     restart: unless-stopped
     # Kein container_name: update.sh skaliert beim Update kurzzeitig auf 2 Instanzen
