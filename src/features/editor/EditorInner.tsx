@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useDocumentState } from '@embedpdf/core/react'
 import { useAnnotationCapability } from '@embedpdf/plugin-annotation/react'
 import { useInteractionManagerCapability } from '@embedpdf/plugin-interaction-manager/react'
 import { useHistoryCapability } from '@embedpdf/plugin-history/react'
@@ -7,13 +8,13 @@ import { useZoom } from '@embedpdf/plugin-zoom/react'
 import type { AnnotationTransferItem } from '@embedpdf/plugin-annotation'
 import type { PaperlessDocument } from '@/api/types'
 import { useT } from '@/lib/i18n'
-import { useSettings } from '@/stores/settings'
 import { useSession } from '@/stores/session'
 import { draftStore } from '@/lib/db'
 import { Button } from '@/components/ui/Button'
 import { EditorPageLayers, GlobalPointerProvider, Scroller, Viewport, type EditorToolId } from './PdfEditor'
 import { EditorToolbar } from './EditorToolbar'
 import { EraserLayer } from './EraserLayer'
+import { InkInputLayer } from './InkInputLayer'
 import { SaveVersionDialog } from './SaveVersionDialog'
 import { ThumbnailsDrawer } from './ThumbnailsDrawer'
 
@@ -28,7 +29,6 @@ export function EditorInner({
 }) {
   const t = useT()
   const navigate = useNavigate()
-  const settings = useSettings()
   const profileId = useSession((s) => s.activeProfile?.id ?? 'default')
 
   const { provides: annotationCap } = useAnnotationCapability()
@@ -44,54 +44,62 @@ export function EditorInner({
   const [saveOpen, setSaveOpen] = useState(false)
   const [draftAvailable, setDraftAvailable] = useState(false)
 
-  // ---------- Palm Rejection: Zeichenmodi nur für den Stift, Finger scrollt ----------
-  // wantsRawTouch=false → Touch-Events bleiben beim Browser (Scrollen/Zoomen), der Stift zeichnet.
+  // ---------- Eigener Zeichenmodus ----------
+  // Freihand-Zeichnen und Radieren laufen über InkInputLayer/EraserLayer statt über
+  // EmbedPDFs Ink-Handler (der Stift und Finger nicht unterscheidet und auf iPadOS
+  // Striche verliert). Der Modus hält EmbedPDFs touch-action offen (wantsRawTouch:false),
+  // damit der Finger nativ scrollen kann – die Layer filtern selbst nach pointerType.
   useEffect(() => {
     if (!interactionCap) return
-    const raw = settings.penFingerDraws
-    for (const modeId of ['ink', 'inkHighlighter']) {
-      interactionCap.registerMode({
-        id: modeId,
-        scope: 'page',
-        exclusive: true,
-        cursor: 'crosshair',
-        wantsRawTouch: raw,
-      })
-    }
-    // Aktiven Zeichenmodus neu aktivieren, damit die Änderung greift
-    if (activeTool === 'ink' || activeTool === 'inkHighlighter') {
-      annotations?.setActiveTool(null)
-      annotations?.setActiveTool(activeTool)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [interactionCap, settings.penFingerDraws])
+    interactionCap.registerMode({
+      id: 'penInput',
+      scope: 'page',
+      exclusive: false,
+      cursor: 'crosshair',
+      wantsRawTouch: false,
+    })
+    // Default-Modus (Auswählen) ebenfalls öffnen: EmbedPDF setzt sonst touch-action:none
+    // auf die Seiten und blockiert Finger-Scrollen, das auf der Seite startet.
+    // Text markieren per Touch bleibt im dedizierten Highlight-Modus möglich.
+    interactionCap.registerMode({
+      id: 'pointerMode',
+      scope: 'page',
+      exclusive: false,
+      cursor: 'auto',
+      wantsRawTouch: false,
+    })
+  }, [interactionCap])
+
+  // Bereits gemountete Pointer-Provider übernehmen überschriebene Modus-Definitionen
+  // erst bei einem Moduswechsel – nach dem Dokument-Load daher einmal durchschalten.
+  const documentState = useDocumentState(docId)
+  const modesRefreshed = useRef(false)
+  useEffect(() => {
+    if (modesRefreshed.current || !interactionCap || !documentState?.document) return
+    modesRefreshed.current = true
+    const interaction = interactionCap.forDocument(docId)
+    interaction.activate('penInput')
+    interaction.activateDefaultMode()
+  }, [interactionCap, documentState?.document, docId])
 
   // ---------- Werkzeug-Umschaltung ----------
   const setTool = useCallback(
     (tool: EditorToolId) => {
       setActiveToolState(tool)
-      if (!annotations) return
-      if (tool === 'select' || tool === 'eraser') {
+      if (!annotations || !interactionCap) return
+      const interaction = interactionCap.forDocument(docId)
+      if (tool === 'ink' || tool === 'inkHighlighter' || tool === 'eraser') {
         annotations.setActiveTool(null)
+        interaction.activate('penInput')
+      } else if (tool === 'select') {
+        annotations.setActiveTool(null)
+        interaction.activateDefaultMode()
       } else {
         annotations.setActiveTool(tool)
       }
     },
-    [annotations],
+    [annotations, interactionCap, docId],
   )
-
-  // Stift-Einstellungen live auf die Tools anwenden (Tool-Defaults sind global)
-  useEffect(() => {
-    if (!annotationCap) return
-    annotationCap.setToolDefaults('ink', {
-      strokeColor: settings.penColor,
-      strokeWidth: settings.penWidth,
-      opacity: 1,
-    })
-    annotationCap.setToolDefaults('inkHighlighter', {
-      strokeWidth: Math.max(8, settings.penWidth * 4),
-    })
-  }, [annotationCap, settings.penColor, settings.penWidth])
 
   // ---------- Entwurfsschutz (Autosave in IndexedDB) ----------
   const draftKey = draftStore.key(profileId, paperlessDocument.id, versionId ?? null)
@@ -238,6 +246,9 @@ export function EditorInner({
                 documentId={docId}
                 renderPage={(page) => (
                   <EditorPageLayers docId={docId} pageIndex={page.pageIndex}>
+                    {(activeTool === 'ink' || activeTool === 'inkHighlighter') && (
+                      <InkInputLayer docId={docId} pageIndex={page.pageIndex} tool={activeTool} />
+                    )}
                     {activeTool === 'eraser' && <EraserLayer docId={docId} pageIndex={page.pageIndex} />}
                   </EditorPageLayers>
                 )}
