@@ -4,13 +4,38 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'node:path'
+import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+
+/**
+ * App-Version für Anzeige & Update-Check:
+ * 1. APP_VERSION-Env (Docker-Build ohne .git, gesetzt von deploy/update.sh)
+ * 2. git describe (Tag oder "vX.Y.Z-<n>-g<hash>" zwischen Releases)
+ * 3. package.json (wird vom Release-Skript synchron zum Tag gehalten)
+ */
+function resolveAppVersion(): string {
+  if (process.env.APP_VERSION) return process.env.APP_VERSION
+  try {
+    return execSync('git describe --tags --always', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim()
+  } catch {
+    const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf8')) as { version: string }
+    return `v${pkg.version}`
+  }
+}
 
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(resolveAppVersion()),
+  },
   plugins: [
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt': neue Version wird nicht stillschweigend aktiviert, sondern per
+      // Update-Banner angeboten (src/features/shell/UpdateBanner.tsx)
+      registerType: 'prompt',
       includeAssets: ['icons/*.svg'],
       manifest: {
         name: 'Paperless Annotator',

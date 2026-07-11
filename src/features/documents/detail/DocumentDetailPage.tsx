@@ -6,6 +6,7 @@ import { ArrowLeft, BookOpen, Check, Download, FileQuestion, MoreVertical, PenLi
 import { useApi } from '@/stores/session'
 import { useT } from '@/lib/i18n'
 import { useTags } from '@/hooks/data'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { Button } from '@/components/ui/Button'
 import { CenteredSpinner, EmptyState } from '@/components/ui/misc'
 import { MetadataForm } from './MetadataForm'
@@ -21,6 +22,9 @@ export function DocumentDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data: tags = [] } = useTags()
+  // Nur eine Vorschau mounten (Desktop-Grid ODER Phone-Tabs): die PDF-Engine
+  // (WASM) soll nicht doppelt in einer per CSS versteckten Ansicht laufen.
+  const isDesktop = useMediaQuery('(min-width: 768px)')
 
   const { data: document, isLoading } = useQuery({
     queryKey: [api.client.baseUrl, 'document', documentId],
@@ -139,30 +143,34 @@ export function DocumentDetailPage() {
       </div>
 
       {/* Tablet/Desktop: zwei Spalten – Phone: Tabs */}
-      <div className="hidden min-h-0 flex-1 gap-4 md:grid md:grid-cols-[24rem_1fr] lg:grid-cols-[28rem_1fr]">
-        <div className="overflow-y-auto pb-4">{metadataColumn}</div>
-        <PreviewPane documentId={document.id} className="h-full min-h-[60vh] w-full rounded-2xl border border-line bg-surface-2" />
-      </div>
+      {isDesktop && (
+        <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-[24rem_1fr] lg:grid-cols-[28rem_1fr]">
+          <div className="overflow-y-auto pb-4">{metadataColumn}</div>
+          <PreviewPane documentId={document.id} className="h-full min-h-[60vh] w-full rounded-2xl border border-line bg-surface-2" />
+        </div>
+      )}
 
-      <Tabs.Root defaultValue="metadata" className="flex min-h-0 flex-1 flex-col md:hidden">
-        <Tabs.List className="ui-chrome mb-3 grid grid-cols-2 gap-1 rounded-xl bg-surface-2 p-1">
-          {(['metadata', 'preview'] as const).map((tab) => (
-            <Tabs.Trigger
-              key={tab}
-              value={tab}
-              className="rounded-lg px-3 py-2 text-sm font-medium text-ink-muted data-[state=active]:bg-surface-1 data-[state=active]:text-ink data-[state=active]:shadow-sm"
-            >
-              {tab === 'metadata' ? t('detail.metadata') : t('detail.preview')}
-            </Tabs.Trigger>
-          ))}
-        </Tabs.List>
-        <Tabs.Content value="metadata" className="min-h-0 flex-1 overflow-y-auto pb-4">
-          {metadataColumn}
-        </Tabs.Content>
-        <Tabs.Content value="preview" className="min-h-0 flex-1">
-          <PreviewPane documentId={document.id} className="h-full min-h-[70vh] w-full rounded-2xl border border-line bg-surface-2" />
-        </Tabs.Content>
-      </Tabs.Root>
+      {!isDesktop && (
+        <Tabs.Root defaultValue="metadata" className="flex min-h-0 flex-1 flex-col">
+          <Tabs.List className="ui-chrome mb-3 grid grid-cols-2 gap-1 rounded-xl bg-surface-2 p-1">
+            {(['metadata', 'preview'] as const).map((tab) => (
+              <Tabs.Trigger
+                key={tab}
+                value={tab}
+                className="rounded-lg px-3 py-2 text-sm font-medium text-ink-muted data-[state=active]:bg-surface-1 data-[state=active]:text-ink data-[state=active]:shadow-sm"
+              >
+                {tab === 'metadata' ? t('detail.metadata') : t('detail.preview')}
+              </Tabs.Trigger>
+            ))}
+          </Tabs.List>
+          <Tabs.Content value="metadata" className="min-h-0 flex-1 overflow-y-auto pb-4">
+            {metadataColumn}
+          </Tabs.Content>
+          <Tabs.Content value="preview" className="min-h-0 flex-1">
+            <PreviewPane documentId={document.id} className="h-full min-h-[70vh] w-full rounded-2xl border border-line bg-surface-2" />
+          </Tabs.Content>
+        </Tabs.Root>
+      )}
 
       {/* Verweis für die Inbox-Nutzung */}
       {hasInboxTag && (

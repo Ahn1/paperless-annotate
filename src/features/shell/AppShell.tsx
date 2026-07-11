@@ -113,10 +113,10 @@ export function AppShell() {
         </nav>
       </aside>
 
-      {/* Hauptbereich */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      {/* Hauptbereich – pt-safe: im iOS-PWA-Modus (black-translucent) liegt die Statusleiste sonst über dem Seiten-Header */}
+      <div className="flex min-w-0 flex-1 flex-col pt-safe">
         {!online && (
-          <div className="ui-chrome flex items-center justify-center gap-2 bg-warning/20 px-3 py-1.5 text-xs font-medium text-ink pt-safe">
+          <div className="ui-chrome flex items-center justify-center gap-2 bg-warning/20 px-3 py-1.5 text-xs font-medium text-ink">
             <WifiOff className="size-3.5" />
             {t('common.offline')}
           </div>

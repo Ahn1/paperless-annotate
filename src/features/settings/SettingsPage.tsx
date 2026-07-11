@@ -221,6 +221,11 @@ export function SettingsPage() {
           {cacheCleared ? t('settings.cacheCleared') : t('settings.clearCache')}
         </Button>
       </Section>
+
+      {/* App-Version (beim Build aus git tag bzw. package.json injiziert) */}
+      <p className="ui-chrome pb-2 text-center text-xs text-ink-faint">
+        {t('app.name')} · {t('settings.appVersion')} {__APP_VERSION__}
+      </p>
     </div>
   )
 }

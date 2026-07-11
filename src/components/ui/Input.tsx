@@ -26,7 +26,9 @@ export const NativeSelect = forwardRef<HTMLSelectElement, SelectHTMLAttributes<H
 
 export function Field({ label, hint, error, children }: { label: string; hint?: string; error?: string; children: ReactNode }) {
   return (
-    <label className="block space-y-1.5">
+    // justify-end + h-full: Felder in einer Grid-Zeile bleiben unten bündig,
+    // auch wenn ein mehrzeiliges Label (z. B. ASN) das Feld höher macht.
+    <label className="flex h-full flex-col justify-end gap-1.5">
       <span className="ui-chrome block text-sm font-medium text-ink">{label}</span>
       {children}
       {hint && !error && <span className="ui-chrome block text-xs text-ink-muted">{hint}</span>}

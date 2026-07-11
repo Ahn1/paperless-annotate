@@ -136,8 +136,8 @@ test('Login → Dokument öffnen → annotieren → Version hochladen', async ({
     uploadedBody = body
   })
 
-  // --- Onboarding: Server verbinden ---
-  await page.goto('/')
+  // --- Onboarding: Server verbinden (Root leitet ohne Profil auf /welcome → direkt einsteigen) ---
+  await page.goto('/onboarding')
   await expect(page.getByText('Mit Paperless verbinden')).toBeVisible()
   await page.getByPlaceholder('https://paperless.example.com').fill(BASE)
   await page.getByRole('button', { name: 'Verbindung prüfen' }).click()
@@ -204,7 +204,7 @@ test('Ohne Profil landet man auf der Landing Page und gelangt von dort ins Setup
 test('Onboarding warnt bei Paperless v2, dass als neues Dokument gespeichert wird', async ({ page }) => {
   await mockPaperlessApi(page, () => undefined, { v2: true })
 
-  await page.goto('/')
+  await page.goto('/onboarding')
   await page.getByPlaceholder('https://paperless.example.com').fill(BASE)
   await page.getByRole('button', { name: 'Verbindung prüfen' }).click()
   await page.getByRole('button', { name: 'Mit API-Token' }).click()
@@ -220,7 +220,7 @@ test('Lesemodus rendert die PDF-Seite', async ({ page }) => {
   await mockPaperlessApi(page, () => undefined)
 
   // Onboarding
-  await page.goto('/')
+  await page.goto('/onboarding')
   await page.getByPlaceholder('https://paperless.example.com').fill(BASE)
   await page.getByRole('button', { name: 'Verbindung prüfen' }).click()
   await page.getByRole('button', { name: 'Mit API-Token' }).click()

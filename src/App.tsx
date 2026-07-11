@@ -4,6 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/app/queryClient'
 import { useSession } from '@/stores/session'
 import { AppShell } from '@/features/shell/AppShell'
+import { UpdateBanner } from '@/features/shell/UpdateBanner'
 import { OnboardingPage } from '@/features/onboarding/OnboardingPage'
 import { UnlockScreen } from '@/features/onboarding/UnlockScreen'
 import { DocumentListPage } from '@/features/documents/DocumentListPage'
@@ -94,6 +95,7 @@ export default function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      <UpdateBanner />
     </QueryClientProvider>
   )
 }
