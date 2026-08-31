@@ -8,7 +8,6 @@ import {
   uuidV4,
   type PdfInkAnnoObject,
   type Position,
-  type Rotation,
 } from '@embedpdf/models'
 import { useSettings } from '@/stores/settings'
 import { smoothStroke } from './inkSmoothing'
@@ -16,7 +15,7 @@ import { groupStrokesByWidth, strokeWidthForPressure, type SizedStroke } from '.
 import {
   PEN_SURFACE_TOUCH_ACTION,
   displayToPagePoint,
-  pageToDisplayPoint,
+  pageToLocalPoint,
   usePageTransform,
   usePenSurface,
   type PenPoint,
@@ -69,7 +68,7 @@ export function InkInputLayer({
   const activePressuresRef = useRef<number[]>([])
   const commitTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   // Fertige Striche ändern sich nicht mehr. Ihre Pfade werden einmal berechnet und
-  // erst bei Zoom-, Dreh- oder Größenwechsel verworfen – pro Bild bleibt nur der
+  // erst bei Zoom- oder Größenwechsel verworfen – pro Bild bleibt nur der
   // aktive Strich zu rechnen.
   const pathCache = useRef<{ key: string; paths: PreviewPath[] }>({ key: '', paths: [] })
 
@@ -207,7 +206,7 @@ export function InkInputLayer({
   const paths: PreviewPath[] = []
   if (el) {
     const cache = pathCache.current
-    const key = `${rotation}|${scale}|${el.clientWidth}x${el.clientHeight}`
+    const key = `${scale}|${el.clientWidth}x${el.clientHeight}`
     if (cache.key !== key) {
       cache.key = key
       cache.paths = []
@@ -215,7 +214,7 @@ export function InkInputLayer({
     if (cache.paths.length > pendingRef.current.length) cache.paths.length = pendingRef.current.length
     while (cache.paths.length < pendingRef.current.length) {
       const stroke = pendingRef.current[cache.paths.length]
-      cache.paths.push({ d: strokePath(stroke.points, el, rotation, scale), width: stroke.width })
+      cache.paths.push({ d: strokePath(stroke.points, scale), width: stroke.width })
     }
     paths.push(...cache.paths)
 
@@ -224,7 +223,7 @@ export function InkInputLayer({
       // Vorschau und abgelegter Strich durchlaufen dieselbe Glättung, damit beim
       // Absetzen nichts springt.
       paths.push({
-        d: strokePath(smoothStroke(active, smoothing), el, rotation, scale),
+        d: strokePath(smoothStroke(active, smoothing), scale),
         width: pressureEnabled ? strokeWidthForPressure(activePressuresRef.current, strokeWidth) : strokeWidth,
       })
     }
@@ -259,9 +258,9 @@ export function InkInputLayer({
   )
 }
 
-/** Zeichnet einen Strich als SVG-Pfad in Bildschirmkoordinaten. */
-function strokePath(points: Position[], el: HTMLElement, rotation: Rotation, scale: number): string {
-  const display = points.map((p) => pageToDisplayPoint(el, p, rotation, scale))
+/** Zeichnet einen Strich als SVG-Pfad im lokalen Raum der Zeichenfläche. */
+function strokePath(points: Position[], scale: number): string {
+  const display = points.map((p) => pageToLocalPoint(p, scale))
   const [first, ...rest] = display
   return (
     `M ${first.x} ${first.y}` +

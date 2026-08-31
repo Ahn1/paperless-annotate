@@ -7,6 +7,7 @@ import { ViewportPluginPackage, Viewport } from '@embedpdf/plugin-viewport/react
 import { ScrollPluginPackage, Scroller } from '@embedpdf/plugin-scroll/react'
 import { RenderPluginPackage, RenderLayer } from '@embedpdf/plugin-render/react'
 import { ZoomPluginPackage, ZoomMode, ZoomGestureWrapper } from '@embedpdf/plugin-zoom/react'
+import { RotatePluginPackage, Rotate } from '@embedpdf/plugin-rotate/react'
 import wasmUrl from '@embedpdf/pdfium/pdfium.wasm?url'
 import { cn } from '@/lib/utils'
 import { CenteredSpinner } from '@/components/ui/misc'
@@ -38,6 +39,8 @@ export default function PdfPreview({
       createPluginRegistration(ScrollPluginPackage, {}),
       createPluginRegistration(RenderPluginPackage, { withAnnotations: true }),
       createPluginRegistration(ZoomPluginPackage, { defaultZoomLevel: ZoomMode.FitWidth, minZoom: 0.25, maxZoom: 8 }),
+      // Ohne dieses Plugin bleibt die im PDF gespeicherte Seitendrehung (/Rotate) unsichtbar
+      createPluginRegistration(RotatePluginPackage, {}),
     ],
     [buffer, docId, name],
   )
@@ -57,7 +60,13 @@ export default function PdfPreview({
           <ZoomGestureWrapper documentId={docId}>
             <Scroller
               documentId={docId}
-              renderPage={(page) => <RenderLayer documentId={docId} pageIndex={page.pageIndex} />}
+              renderPage={(page) => (
+                <Rotate documentId={docId} pageIndex={page.pageIndex}>
+                  <div style={{ width: page.width, height: page.height }}>
+                    <RenderLayer documentId={docId} pageIndex={page.pageIndex} />
+                  </div>
+                </Rotate>
+              )}
             />
           </ZoomGestureWrapper>
         </Viewport>

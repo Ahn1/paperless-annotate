@@ -1,6 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react'
 import { useDocumentState } from '@embedpdf/core/react'
-import { restorePosition, transformPosition, transformSize, type Position, type Rotation } from '@embedpdf/models'
+import { restorePosition, transformSize, type Position, type Rotation } from '@embedpdf/models'
 
 export interface PenPoint {
   x: number
@@ -144,7 +144,14 @@ export function displayToPagePoint(el: HTMLElement, point: PenPoint, rotation: R
   return restorePosition(rotatedSize, point, rotation, scale)
 }
 
-/** Umkehrung von {@link displayToPagePoint} – für die Live-Vorschau. */
-export function pageToDisplayPoint(el: HTMLElement, point: Position, rotation: Rotation, scale: number): PenPoint {
-  return transformPosition({ width: el.clientWidth / scale, height: el.clientHeight / scale }, point, rotation, scale)
+/**
+ * Rechnet einen Punkt aus unrotierten Seitenkoordinaten (Zoom 1) in den lokalen
+ * Raum der Zeichenfläche um – für die Live-Vorschau.
+ *
+ * Hier fehlt die Rotation bewusst: die Seitenebenen stecken im `<Rotate>`-Wrapper,
+ * der die Drehung per CSS erledigt. Innerhalb der Zeichenfläche gilt weiter das
+ * ungedrehte Seitenraster, nur skaliert.
+ */
+export function pageToLocalPoint(point: Position, scale: number): PenPoint {
+  return { x: point.x * scale, y: point.y * scale }
 }

@@ -17,6 +17,7 @@ import { HistoryPluginPackage } from '@embedpdf/plugin-history/react'
 import { AnnotationPluginPackage, AnnotationLayer } from '@embedpdf/plugin-annotation/react'
 import { ExportPluginPackage } from '@embedpdf/plugin-export/react'
 import { ThumbnailPluginPackage } from '@embedpdf/plugin-thumbnail/react'
+import { RotatePluginPackage, Rotate } from '@embedpdf/plugin-rotate/react'
 import wasmUrl from '@embedpdf/pdfium/pdfium.wasm?url'
 import type { PaperlessDocument } from '@/api/types'
 import { CenteredSpinner } from '@/components/ui/misc'
@@ -70,6 +71,8 @@ export default function PdfEditor({
       }),
       createPluginRegistration(ExportPluginPackage, { defaultFileName: `${document.title}.pdf` }),
       createPluginRegistration(ThumbnailPluginPackage, { width: 110, gap: 10 }),
+      // Ohne dieses Plugin bleibt die im PDF gespeicherte Seitendrehung (/Rotate) unsichtbar
+      createPluginRegistration(RotatePluginPackage, {}),
     ],
     [buffer, docId, document.title],
   )
@@ -100,12 +103,16 @@ export function EditorPageLayers({
   children?: React.ReactNode
 }) {
   return (
-    <PagePointerProvider documentId={docId} pageIndex={pageIndex}>
-      <RenderLayer documentId={docId} pageIndex={pageIndex} />
-      <SelectionLayer documentId={docId} pageIndex={pageIndex} />
-      <AnnotationLayer documentId={docId} pageIndex={pageIndex} />
-      {children}
-    </PagePointerProvider>
+    // Rotate muss außen liegen: PagePointerProvider rechnet Zeigerpunkte aus der
+    // gedrehten Darstellung zurück und braucht darum die ungedrehte Seitengröße.
+    <Rotate documentId={docId} pageIndex={pageIndex}>
+      <PagePointerProvider documentId={docId} pageIndex={pageIndex}>
+        <RenderLayer documentId={docId} pageIndex={pageIndex} />
+        <SelectionLayer documentId={docId} pageIndex={pageIndex} />
+        <AnnotationLayer documentId={docId} pageIndex={pageIndex} />
+        {children}
+      </PagePointerProvider>
+    </Rotate>
   )
 }
 

@@ -9,6 +9,7 @@ import { ScrollPluginPackage, Scroller, useScroll } from '@embedpdf/plugin-scrol
 import { RenderPluginPackage, RenderLayer } from '@embedpdf/plugin-render/react'
 import { ZoomPluginPackage, ZoomMode, useZoom } from '@embedpdf/plugin-zoom/react'
 import { ThumbnailPluginPackage } from '@embedpdf/plugin-thumbnail/react'
+import { RotatePluginPackage, Rotate } from '@embedpdf/plugin-rotate/react'
 import wasmUrl from '@embedpdf/pdfium/pdfium.wasm?url'
 import { PanelLeft, ZoomIn, ZoomOut } from 'lucide-react'
 import type { PaperlessDocument } from '@/api/types'
@@ -49,6 +50,8 @@ export default function PdfReader({
       createPluginRegistration(RenderPluginPackage, { withAnnotations: true }),
       createPluginRegistration(ZoomPluginPackage, { defaultZoomLevel: ZoomMode.FitWidth, minZoom: 0.25, maxZoom: 8 }),
       createPluginRegistration(ThumbnailPluginPackage, { width: 110, gap: 10 }),
+      // Ohne dieses Plugin bleibt die im PDF gespeicherte Seitendrehung (/Rotate) unsichtbar
+      createPluginRegistration(RotatePluginPackage, {}),
     ],
     [buffer, docId, document.title],
   )
@@ -206,7 +209,13 @@ function ReaderInner({
           <Viewport documentId={docId} className="absolute inset-0 overflow-auto bg-surface-2">
             <Scroller
               documentId={docId}
-              renderPage={(page) => <RenderLayer documentId={docId} pageIndex={page.pageIndex} />}
+              renderPage={(page) => (
+                <Rotate documentId={docId} pageIndex={page.pageIndex}>
+                  <div style={{ width: page.width, height: page.height }}>
+                    <RenderLayer documentId={docId} pageIndex={page.pageIndex} />
+                  </div>
+                </Rotate>
+              )}
             />
           </Viewport>
         </div>
