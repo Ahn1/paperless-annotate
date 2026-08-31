@@ -7,6 +7,7 @@ import { EmptyState, Skeleton } from '@/components/ui/misc'
 import { useT } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { useSettings, type DocumentViewMode } from '@/stores/settings'
+import type { Origin } from '@/lib/navigation'
 import { useLookups, useSavedViews } from '@/hooks/data'
 import type { DocumentFilters, DocumentOrdering } from '@/api/types'
 import {
@@ -47,6 +48,12 @@ export function DocumentListPage({ inboxOnly = false }: { inboxOnly?: boolean })
     if (inboxOnly) merged.inbox = true
     return merged
   }, [searchParams, savedView, inboxOnly])
+
+  // Herkunft für den Zurück-Knopf der Detailseite – samt Filtern, damit die Liste unverändert zurückkommt
+  const origin: Origin = useMemo(
+    () => ({ id: inboxOnly ? 'inbox' : 'documents', search: searchParams.toString() || undefined }),
+    [inboxOnly, searchParams],
+  )
 
   const urlSort = searchParams.get('sort') as DocumentOrdering | null
   const ordering: DocumentOrdering =
@@ -158,6 +165,7 @@ export function DocumentListPage({ inboxOnly = false }: { inboxOnly?: boolean })
               selected={selectedIds.has(document.id)}
               selectionMode={selectionMode}
               onToggleSelect={() => toggleSelect(document.id)}
+              origin={origin}
             />
           ))}
         </div>
@@ -171,11 +179,18 @@ export function DocumentListPage({ inboxOnly = false }: { inboxOnly?: boolean })
               selected={selectedIds.has(document.id)}
               selectionMode={selectionMode}
               onToggleSelect={() => toggleSelect(document.id)}
+              origin={origin}
             />
           ))}
         </div>
       ) : (
-        <DocumentTable documents={documents} lookups={lookups} selectedIds={selectedIds} onToggleSelect={toggleSelect} />
+        <DocumentTable
+          documents={documents}
+          lookups={lookups}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelect}
+          origin={origin}
+        />
       )}
 
       <div ref={sentinelRef} className="h-1" />

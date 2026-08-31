@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import * as Popover from '@radix-ui/react-popover'
 import * as Slider from '@radix-ui/react-slider'
 import {
-  ArrowLeft,
   Eraser,
   Highlighter,
   MousePointer2,
@@ -21,6 +20,9 @@ import { useT, type TranslationKey } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/stores/settings'
 import { SwitchRow } from '@/components/ui/Switch'
+import { SegmentedControl } from '@/components/ui/SegmentedControl'
+import { useSmoothingOptions } from './smoothingOptions'
+import { BackButton } from '@/components/ui/BackButton'
 import type { EditorToolId } from './PdfEditor'
 
 const PEN_COLORS = ['#e03131', '#1971c2', '#2f9e44', '#f08c00', '#9c36b5', '#000000', '#ffffff']
@@ -45,6 +47,7 @@ export function EditorToolbar({
   onToggleThumbs,
   onSave,
   onExit,
+  backLabel,
   dirty,
   title,
 }: {
@@ -58,6 +61,8 @@ export function EditorToolbar({
   onToggleThumbs: () => void
   onSave: () => void
   onExit: () => void
+  /** Ziel des Zurück-Knopfs, z. B. „Dokument“. */
+  backLabel: string
   dirty: boolean
   title: string
 }) {
@@ -74,9 +79,9 @@ export function EditorToolbar({
 
   return (
     <div className="ui-chrome flex items-center gap-1 border-b border-line bg-surface-1 px-2 py-1.5 pt-safe">
-      <ToolbarButton onClick={onExit} label={t('common.back')}>
-        <ArrowLeft className="size-5" />
-      </ToolbarButton>
+      <BackButton label={backLabel} onClick={onExit} showLabelFrom="lg" />
+      {/* Trennlinie: der Zurück-Knopf gehört nicht zu den Werkzeugen */}
+      <span className="mx-1 h-7 w-px shrink-0 bg-line" />
       <ToolbarButton onClick={onToggleThumbs} label={t('editor.thumbnails')}>
         <PanelLeft className="size-5" />
       </ToolbarButton>
@@ -180,6 +185,7 @@ function PenOptionsWrapper({
 }) {
   const t = useT()
   const settings = useSettings()
+  const smoothingOptions = useSmoothingOptions()
 
   if (!enabled) return <>{children}</>
 
@@ -234,6 +240,19 @@ function PenOptionsWrapper({
                 </Slider.Track>
                 <Slider.Thumb className="block size-5 rounded-full bg-accent shadow" />
               </Slider.Root>
+            </div>
+          )}
+
+          {tool !== 'freeText' && (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-faint">
+                {t('settings.pen.smoothing')}
+              </p>
+              <SegmentedControl
+                value={settings.penSmoothing}
+                options={smoothingOptions}
+                onChange={(value) => settings.set({ penSmoothing: value })}
+              />
             </div>
           )}
 

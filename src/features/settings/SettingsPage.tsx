@@ -1,10 +1,13 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { BookOpen, Check, Download, LogOut, Moon, Paintbrush, Plus, Server, Sun, Trash2 } from 'lucide-react'
+import { BookOpen, Check, Download, LogOut, Moon, Paintbrush, Plus, Server, Sparkles, Sun, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { NativeSelect } from '@/components/ui/Input'
 import { SwitchRow } from '@/components/ui/Switch'
+import { SegmentedRow } from '@/components/ui/SegmentedControl'
+import { useSmoothingOptions } from '@/features/editor/smoothingOptions'
+import type { SmoothingLevel } from '@/features/editor/inkSmoothing'
 import { useT, useI18nStore, type Lang } from '@/lib/i18n'
 import { useThemeStore, type Accent, type ThemeMode } from '@/lib/theme'
 import { useSettings, type DocumentViewMode } from '@/stores/settings'
@@ -20,6 +23,7 @@ export function SettingsPage() {
   const { lang, setLang } = useI18nStore()
   const settings = useSettings()
   const session = useSession()
+  const smoothingOptions = useSmoothingOptions()
   const [cacheCleared, setCacheCleared] = useState(false)
 
   const themeModes: { value: ThemeMode; label: string; icon?: typeof Sun }[] = [
@@ -117,8 +121,16 @@ export function SettingsPage() {
         />
         <SwitchRow
           label={t('settings.pen.pressure')}
+          hint={t('settings.pen.pressureHint')}
           checked={settings.penPressure}
           onCheckedChange={(v) => settings.set({ penPressure: v })}
+        />
+        <SegmentedRow<SmoothingLevel>
+          label={t('settings.pen.smoothing')}
+          hint={t('settings.pen.smoothingHint')}
+          value={settings.penSmoothing}
+          options={smoothingOptions}
+          onChange={(v) => settings.set({ penSmoothing: v })}
         />
       </Section>
 
@@ -213,6 +225,13 @@ export function SettingsPage() {
       {/* App-Installation (PWA) */}
       <Section title={t('settings.app.title')} icon={<Download className="size-4" />}>
         <InstallApp />
+        <div className="mt-4 border-t border-line pt-3">
+          <p className="ui-chrome mb-2 text-sm text-ink-muted">{t('settings.projectPageHint')}</p>
+          <Button variant="outline" size="sm" onClick={() => navigate('/welcome')}>
+            <Sparkles className="size-4" />
+            {t('settings.projectPage')}
+          </Button>
+        </div>
       </Section>
 
       {/* Cache */}

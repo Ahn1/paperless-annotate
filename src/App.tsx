@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate, RouterProvider, useLocation, useNavigate } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/app/queryClient'
 import { useSession } from '@/stores/session'
@@ -48,6 +48,46 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+// Data Router (statt BrowserRouter): nur er stellt useBlocker bereit, mit dem der
+// Editor das Verlassen mit ungespeicherten Annotationen abfängt.
+const router = createBrowserRouter([
+  { path: '/welcome', element: <LandingPage /> },
+  { path: '/onboarding', element: <OnboardingPage /> },
+  {
+    path: '/documents/:id/annotate',
+    element: (
+      <AuthGate>
+        <EditorPage />
+      </AuthGate>
+    ),
+  },
+  {
+    path: '/documents/:id/read',
+    element: (
+      <AuthGate>
+        <ReaderPage />
+      </AuthGate>
+    ),
+  },
+  {
+    element: (
+      <AuthGate>
+        <AppShell />
+      </AuthGate>
+    ),
+    children: [
+      { path: '/', element: <DashboardPage /> },
+      { path: '/documents', element: <DocumentListPage /> },
+      { path: '/documents/:id', element: <DocumentDetailPage /> },
+      { path: '/inbox', element: <DocumentListPage inboxOnly /> },
+      { path: '/manage/*', element: <ManagePage /> },
+      { path: '/trash', element: <TrashPage /> },
+      { path: '/settings', element: <SettingsPage /> },
+      { path: '*', element: <Navigate to="/" replace /> },
+    ],
+  },
+])
+
 export default function App() {
   const init = useSession((s) => s.init)
   useEffect(() => {
@@ -56,45 +96,8 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* BrowserRouter: Hosting braucht SPA-Fallback auf index.html (vite preview kann das; Caddy/nginx: try_files) */}
-      <BrowserRouter>
-        <Routes>
-          <Route path="/welcome" element={<LandingPage />} />
-          <Route path="/onboarding" element={<OnboardingPage />} />
-          <Route
-            path="/documents/:id/annotate"
-            element={
-              <AuthGate>
-                <EditorPage />
-              </AuthGate>
-            }
-          />
-          <Route
-            path="/documents/:id/read"
-            element={
-              <AuthGate>
-                <ReaderPage />
-              </AuthGate>
-            }
-          />
-          <Route
-            element={
-              <AuthGate>
-                <AppShell />
-              </AuthGate>
-            }
-          >
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/documents" element={<DocumentListPage />} />
-            <Route path="/documents/:id" element={<DocumentDetailPage />} />
-            <Route path="/inbox" element={<DocumentListPage inboxOnly />} />
-            <Route path="/manage/*" element={<ManagePage />} />
-            <Route path="/trash" element={<TrashPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      {/* Hosting braucht SPA-Fallback auf index.html (vite preview kann das; Caddy/nginx: try_files) */}
+      <RouterProvider router={router} />
       <UpdateBanner />
     </QueryClientProvider>
   )

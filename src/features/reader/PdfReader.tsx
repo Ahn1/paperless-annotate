@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { EmbedPDF } from '@embedpdf/core/react'
 import { createPluginRegistration } from '@embedpdf/core'
@@ -10,13 +10,16 @@ import { RenderPluginPackage, RenderLayer } from '@embedpdf/plugin-render/react'
 import { ZoomPluginPackage, ZoomMode, useZoom } from '@embedpdf/plugin-zoom/react'
 import { ThumbnailPluginPackage } from '@embedpdf/plugin-thumbnail/react'
 import wasmUrl from '@embedpdf/pdfium/pdfium.wasm?url'
-import { ArrowLeft, PanelLeft, ZoomIn, ZoomOut } from 'lucide-react'
+import { PanelLeft, ZoomIn, ZoomOut } from 'lucide-react'
 import type { PaperlessDocument } from '@/api/types'
 import { useT } from '@/lib/i18n'
+import { documentPath, originState, useOrigin } from '@/lib/navigation'
+import { useEscapeExit } from '@/hooks/useEscapeExit'
 import { useSettings } from '@/stores/settings'
 import { useSession } from '@/stores/session'
 import { positionStore } from '@/lib/db'
 import { CenteredSpinner } from '@/components/ui/misc'
+import { BackButton } from '@/components/ui/BackButton'
 import { ThumbnailsDrawer } from '@/features/editor/ThumbnailsDrawer'
 
 /**
@@ -76,6 +79,7 @@ function ReaderInner({
 }) {
   const t = useT()
   const navigate = useNavigate()
+  const origin = useOrigin()
   const rememberPosition = useSettings((s) => s.rememberPdfPosition)
   const profileId = useSession((s) => s.activeProfile?.id ?? 'default')
 
@@ -92,6 +96,17 @@ function ReaderInner({
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const viewport = viewportCap?.forDocument(docId) ?? null
+
+  // Zurück geht eine Ebene hoch auf die Detailseite – und ersetzt dabei den
+  // Verlaufseintrag des Lesemodus, statt einen neuen anzuhängen.
+  const exit = useCallback(() => {
+    navigate(documentPath(paperlessDocument.root_document ?? paperlessDocument.id), {
+      replace: true,
+      state: originState(origin),
+    })
+  }, [navigate, paperlessDocument.root_document, paperlessDocument.id, origin])
+
+  useEscapeExit(exit)
 
   // ---------- Position fortlaufend merken (debounced) ----------
   useEffect(() => {
@@ -142,14 +157,9 @@ function ReaderInner({
     <div className="fixed inset-0 z-50 flex flex-col bg-surface">
       {/* Schmale Kopfleiste */}
       <div className="ui-chrome flex items-center gap-1 border-b border-line bg-surface-1 px-2 py-1.5 pt-safe">
-        <button
-          onClick={() => navigate(`/documents/${paperlessDocument.id}`)}
-          title={t('common.back')}
-          aria-label={t('common.back')}
-          className="rounded-lg p-2 text-ink-muted hover:bg-surface-2"
-        >
-          <ArrowLeft className="size-5" />
-        </button>
+        <BackButton label={t('nav.document')} onClick={exit} showLabelFrom="lg" />
+        {/* Trennlinie: der Zurück-Knopf gehört nicht zu den Werkzeugen */}
+        <span className="mx-1 h-7 w-px shrink-0 bg-line" />
         <button
           onClick={() => setThumbsOpen((open) => !open)}
           title={t('editor.thumbnails')}

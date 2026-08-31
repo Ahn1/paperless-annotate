@@ -8,8 +8,11 @@ import {
   uuidV4,
   type PdfInkAnnoObject,
   type Position,
+  type Rotation,
 } from '@embedpdf/models'
 import { useSettings } from '@/stores/settings'
+import { smoothStroke } from './inkSmoothing'
+import { groupStrokesByWidth, strokeWidthForPressure, type SizedStroke } from './penPressure'
 import {
   PEN_SURFACE_TOUCH_ACTION,
   displayToPagePoint,
@@ -24,6 +27,12 @@ const COMMIT_DELAY_MS = 800
 
 /** EmbedPDF-Standardfarbe des Ink-Highlighters. */
 const HIGHLIGHT_COLOR = '#FFCD45'
+
+/** Ein Strich der Vorschau: fertiger SVG-Pfad plus seine Stärke in Seitenkoordinaten. */
+interface PreviewPath {
+  d: string
+  width: number
+}
 
 /**
  * Freihand-Zeichenfläche über einer PDF-Seite. Ersetzt EmbedPDFs Ink-Handler,
@@ -47,13 +56,22 @@ export function InkInputLayer({
   const isHighlighter = tool === 'inkHighlighter'
   const strokeWidth = isHighlighter ? Math.max(8, settings.penWidth * 4) : settings.penWidth
   const strokeColor = isHighlighter ? HIGHLIGHT_COLOR : settings.penColor
+  const smoothing = settings.penSmoothing
+  // Der Marker soll gleichmäßig decken, deshalb wirkt der Druck nur auf den Stift.
+  const pressureEnabled = settings.penPressure && !isHighlighter
 
   const surfaceRef = useRef<HTMLDivElement>(null)
   // Striche in unrotierten Seitenkoordinaten (Zoom 1) – die Vorschau rechnet zurück,
   // damit Zoomwechsel zwischen Strich und Commit nichts verfälschen.
-  const pendingRef = useRef<Position[][]>([])
+  // Fertige Striche liegen hier bereits geglättet, mit ihrer endgültigen Stärke.
+  const pendingRef = useRef<SizedStroke<Position>[]>([])
   const activeRef = useRef<Position[] | null>(null)
+  const activePressuresRef = useRef<number[]>([])
   const commitTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  // Fertige Striche ändern sich nicht mehr. Ihre Pfade werden einmal berechnet und
+  // erst bei Zoom-, Dreh- oder Größenwechsel verworfen – pro Bild bleibt nur der
+  // aktive Strich zu rechnen.
+  const pathCache = useRef<{ key: string; paths: PreviewPath[] }>({ key: '', paths: [] })
 
   const [, setTick] = useState(0)
   const rafRef = useRef(0)
@@ -65,72 +83,109 @@ export function InkInputLayer({
     })
   }, [])
 
-  const propsRef = useRef({ annotationCap, docId, pageIndex, rotation, scale, strokeWidth, strokeColor, isHighlighter })
-  propsRef.current = { annotationCap, docId, pageIndex, rotation, scale, strokeWidth, strokeColor, isHighlighter }
+  const propsRef = useRef({
+    annotationCap,
+    docId,
+    pageIndex,
+    rotation,
+    scale,
+    strokeWidth,
+    strokeColor,
+    isHighlighter,
+    smoothing,
+    pressureEnabled,
+  })
+  propsRef.current = {
+    annotationCap,
+    docId,
+    pageIndex,
+    rotation,
+    scale,
+    strokeWidth,
+    strokeColor,
+    isHighlighter,
+    smoothing,
+    pressureEnabled,
+  }
 
   const commit = useCallback(() => {
     clearTimeout(commitTimer.current)
     const strokes = pendingRef.current
     pendingRef.current = []
-    const { annotationCap: cap, docId: doc, pageIndex: page, strokeWidth: width, strokeColor: color, isHighlighter: hi } = propsRef.current
+    pathCache.current = { key: '', paths: [] }
+    const { annotationCap: cap, docId: doc, pageIndex: page, strokeColor: color, isHighlighter: hi } = propsRef.current
     const annotations = cap?.forDocument(doc)
     if (!annotations || strokes.length === 0) return
-    const allPoints = strokes.flat()
-    const annotation: PdfInkAnnoObject = {
-      type: PdfAnnotationSubtype.INK,
-      id: uuidV4(),
-      created: new Date(),
-      pageIndex: page,
-      rect: expandRect(rectFromPoints(allPoints), width / 2),
-      inkList: strokes.map((points) => ({ points })),
-      strokeColor: color,
-      color,
-      opacity: 1,
-      strokeWidth: width,
-      flags: ['print'],
-      ...(hi ? { intent: 'InkHighlight', blendMode: PdfBlendMode.Multiply } : {}),
+    // Eine Ink-Annotation trägt genau eine Strichstärke, deshalb je Stärke eine Annotation.
+    for (const group of groupStrokesByWidth(strokes)) {
+      const annotation: PdfInkAnnoObject = {
+        type: PdfAnnotationSubtype.INK,
+        id: uuidV4(),
+        created: new Date(),
+        pageIndex: page,
+        rect: expandRect(rectFromPoints(group.strokes.flat()), group.width / 2),
+        inkList: group.strokes.map((points) => ({ points })),
+        strokeColor: color,
+        color,
+        opacity: 1,
+        strokeWidth: group.width,
+        flags: ['print'],
+        ...(hi ? { intent: 'InkHighlight', blendMode: PdfBlendMode.Multiply } : {}),
+      }
+      annotations.createAnnotation(page, annotation)
     }
-    annotations.createAnnotation(page, annotation)
     requestRender()
   }, [requestRender])
 
-  const finishStroke = useCallback(() => {
-    const points = activeRef.current
-    activeRef.current = null
-    if (points && points.length > 0) {
-      // Tap ohne Bewegung ergibt einen Punkt
-      pendingRef.current.push(points.length === 1 ? [points[0], points[0]] : points)
-    }
-    clearTimeout(commitTimer.current)
-    if (pendingRef.current.length > 0) commitTimer.current = setTimeout(commit, COMMIT_DELAY_MS)
-    requestRender()
-  }, [commit, requestRender])
+  const finishStroke = useCallback(
+    (immediate = false) => {
+      const raw = activeRef.current
+      const pressures = activePressuresRef.current
+      activeRef.current = null
+      activePressuresRef.current = []
+      if (raw && raw.length > 0) {
+        const { smoothing: level, strokeWidth: base, pressureEnabled: withPressure } = propsRef.current
+        const smoothed = smoothStroke(raw, level)
+        pendingRef.current.push({
+          // Tap ohne Bewegung ergibt einen Punkt
+          points: smoothed.length === 1 ? [smoothed[0], smoothed[0]] : smoothed,
+          width: withPressure ? strokeWidthForPressure(pressures, base) : base,
+        })
+      }
+      clearTimeout(commitTimer.current)
+      if (pendingRef.current.length > 0) {
+        if (immediate) commit()
+        else commitTimer.current = setTimeout(commit, COMMIT_DELAY_MS)
+      }
+      requestRender()
+    },
+    [commit, requestRender],
+  )
 
-  const toPage = useCallback((p: PenPoint): Position | null => {
+  const addPoint = useCallback((p: PenPoint) => {
     const el = surfaceRef.current
-    if (!el) return null
+    const stroke = activeRef.current
+    if (!el || !stroke) return
     const { rotation: rot, scale: s } = propsRef.current
-    return displayToPagePoint(el, p, rot, s)
+    stroke.push(displayToPagePoint(el, p, rot, s))
+    if (p.pressure !== undefined) activePressuresRef.current.push(p.pressure)
   }, [])
 
   usePenSurface(surfaceRef, {
     fingerDraws: settings.penFingerDraws,
     onStart: (p) => {
       clearTimeout(commitTimer.current)
-      const point = toPage(p)
-      activeRef.current = point ? [point] : []
+      activeRef.current = []
+      activePressuresRef.current = []
+      addPoint(p)
       requestRender()
     },
     onMove: (pts) => {
-      const stroke = activeRef.current
-      if (!stroke) return
-      for (const p of pts) {
-        const point = toPage(p)
-        if (point) stroke.push(point)
-      }
+      if (!activeRef.current) return
+      for (const p of pts) addPoint(p)
       requestRender()
     },
-    onEnd: finishStroke,
+    onEnd: () => finishStroke(),
     onCancel: () => {
       // Abgebrochene Striche mit Substanz behalten – nichts wegwerfen, was gezeichnet wurde
       if (activeRef.current && activeRef.current.length < 2) activeRef.current = null
@@ -139,26 +194,41 @@ export function InkInputLayer({
   })
 
   // Beim Toolwechsel/Verlassen ausstehende Striche sofort übernehmen
+  const finishRef = useRef(finishStroke)
+  finishRef.current = finishStroke
   useEffect(() => {
     return () => {
-      if (activeRef.current && activeRef.current.length > 0) pendingRef.current.push(activeRef.current)
-      activeRef.current = null
-      commit()
+      finishRef.current(true)
       cancelAnimationFrame(rafRef.current)
     }
-  }, [commit])
+  }, [])
 
   const el = surfaceRef.current
-  const visibleStrokes = [...pendingRef.current, ...(activeRef.current ? [activeRef.current] : [])]
-  const paths = el
-    ? visibleStrokes
-        .filter((points) => points.length > 0)
-        .map((points) => {
-          const display = points.map((p) => pageToDisplayPoint(el, p, rotation, scale))
-          const [first, ...rest] = display
-          return `M ${first.x} ${first.y}` + rest.map((p) => ` L ${p.x} ${p.y}`).join('') + (rest.length === 0 ? ` L ${first.x} ${first.y}` : '')
-        })
-    : []
+  const paths: PreviewPath[] = []
+  if (el) {
+    const cache = pathCache.current
+    const key = `${rotation}|${scale}|${el.clientWidth}x${el.clientHeight}`
+    if (cache.key !== key) {
+      cache.key = key
+      cache.paths = []
+    }
+    if (cache.paths.length > pendingRef.current.length) cache.paths.length = pendingRef.current.length
+    while (cache.paths.length < pendingRef.current.length) {
+      const stroke = pendingRef.current[cache.paths.length]
+      cache.paths.push({ d: strokePath(stroke.points, el, rotation, scale), width: stroke.width })
+    }
+    paths.push(...cache.paths)
+
+    const active = activeRef.current
+    if (active && active.length > 0) {
+      // Vorschau und abgelegter Strich durchlaufen dieselbe Glättung, damit beim
+      // Absetzen nichts springt.
+      paths.push({
+        d: strokePath(smoothStroke(active, smoothing), el, rotation, scale),
+        width: pressureEnabled ? strokeWidthForPressure(activePressuresRef.current, strokeWidth) : strokeWidth,
+      })
+    }
+  }
 
   return (
     <div
@@ -172,13 +242,13 @@ export function InkInputLayer({
           className="pointer-events-none absolute inset-0 h-full w-full"
           style={isHighlighter ? { mixBlendMode: 'multiply' } : undefined}
         >
-          {paths.map((d, i) => (
+          {paths.map((path, i) => (
             <path
               key={i}
-              d={d}
+              d={path.d}
               fill="none"
               stroke={strokeColor}
-              strokeWidth={strokeWidth * scale}
+              strokeWidth={path.width * scale}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -186,5 +256,16 @@ export function InkInputLayer({
         </svg>
       )}
     </div>
+  )
+}
+
+/** Zeichnet einen Strich als SVG-Pfad in Bildschirmkoordinaten. */
+function strokePath(points: Position[], el: HTMLElement, rotation: Rotation, scale: number): string {
+  const display = points.map((p) => pageToDisplayPoint(el, p, rotation, scale))
+  const [first, ...rest] = display
+  return (
+    `M ${first.x} ${first.y}` +
+    rest.map((p) => ` L ${p.x} ${p.y}`).join('') +
+    (rest.length === 0 ? ` L ${first.x} ${first.y}` : '')
   )
 }

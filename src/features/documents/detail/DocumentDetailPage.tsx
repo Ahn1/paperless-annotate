@@ -2,12 +2,14 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as Tabs from '@radix-ui/react-tabs'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { ArrowLeft, BookOpen, Check, Download, FileQuestion, MoreVertical, PenLine, Trash2 } from 'lucide-react'
+import { BookOpen, Check, Download, FileQuestion, MoreVertical, PenLine, Trash2 } from 'lucide-react'
 import { useApi } from '@/stores/session'
 import { useT } from '@/lib/i18n'
+import { originState, useBackTarget, useOrigin } from '@/lib/navigation'
 import { useTags } from '@/hooks/data'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { Button } from '@/components/ui/Button'
+import { BackButton } from '@/components/ui/BackButton'
 import { CenteredSpinner, EmptyState } from '@/components/ui/misc'
 import { MetadataForm } from './MetadataForm'
 import { PreviewPane } from './PreviewPane'
@@ -22,6 +24,9 @@ export function DocumentDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data: tags = [] } = useTags()
+  // Zurück geht eine Ebene hoch – auf die Liste, aus der das Dokument geöffnet wurde
+  const origin = useOrigin()
+  const backTarget = useBackTarget()
   // Nur eine Vorschau mounten (Desktop-Grid ODER Phone-Tabs): die PDF-Engine
   // (WASM) soll nicht doppelt in einer per CSS versteckten Ansicht laufen.
   const isDesktop = useMediaQuery('(min-width: 768px)')
@@ -89,9 +94,7 @@ export function DocumentDetailPage() {
     <div className="mx-auto flex h-full max-w-7xl flex-col p-4">
       {/* Kopfzeile */}
       <div className="mb-4 flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label={t('common.back')}>
-          <ArrowLeft className="size-5" />
-        </Button>
+        <BackButton label={t(backTarget.labelKey)} onClick={() => navigate(backTarget.to)} />
         <h1 className="min-w-0 flex-1 truncate text-lg font-bold text-ink">{document.title}</h1>
 
         {hasInboxTag && (
@@ -101,12 +104,16 @@ export function DocumentDetailPage() {
           </Button>
         )}
 
-        <Button variant="outline" size="sm" onClick={() => navigate(`/documents/${document.id}/read`)}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate(`/documents/${document.id}/read`, { state: originState(origin) })}
+        >
           <BookOpen className="size-4" />
           <span className="hidden sm:inline">{t('reader.open')}</span>
         </Button>
 
-        <Button size="sm" onClick={() => navigate(`/documents/${document.id}/annotate`)}>
+        <Button size="sm" onClick={() => navigate(`/documents/${document.id}/annotate`, { state: originState(origin) })}>
           <PenLine className="size-4" />
           <span className="hidden sm:inline">{t('detail.annotate')}</span>
         </Button>

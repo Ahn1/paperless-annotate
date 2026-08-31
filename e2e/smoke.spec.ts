@@ -1,4 +1,4 @@
-import { expect, test, type Page, type Route } from '@playwright/test'
+import { expect, test, type Locator, type Page, type Route } from '@playwright/test'
 
 /**
  * Smoke-E2E (Kap. 9): Login → Dokument öffnen → annotieren → Version hochladen.
@@ -130,6 +130,35 @@ async function mockPaperlessApi(
 
 test.use({ locale: 'de-DE', serviceWorkers: 'block', viewport: { width: 1280, height: 800 } })
 
+/** Onboarding durchlaufen, bis das Dashboard steht. */
+async function signIn(page: Page) {
+  await page.goto('/onboarding')
+  await expect(page.getByText('Mit Paperless verbinden')).toBeVisible()
+  await page.getByPlaceholder('https://paperless.example.com').fill(BASE)
+  await page.getByRole('button', { name: 'Verbindung prüfen' }).click()
+  await page.getByRole('button', { name: 'Mit API-Token' }).click()
+  await page.locator('form input').first().fill('test-token-1234')
+  await page.getByRole('button', { name: 'Anmelden' }).click()
+  await page.getByRole('button', { name: 'Los geht’s' }).click()
+}
+
+/** Einen Freihand-Strich auf der gerenderten PDF-Seite ziehen. */
+async function drawStroke(page: Page, pageImage: Locator) {
+  await page.getByRole('button', { name: 'Stift', exact: true }).click()
+  const box = await pageImage.boundingBox()
+  if (!box) throw new Error('PDF-Seite nicht gefunden')
+  const startX = box.x + box.width * 0.3
+  const startY = box.y + box.height * 0.3
+  await page.mouse.move(startX, startY)
+  await page.mouse.down()
+  for (let i = 1; i <= 8; i++) {
+    await page.mouse.move(startX + i * 12, startY + i * 8, { steps: 2 })
+  }
+  await page.mouse.up()
+  // Ink-Tool committet Striche nach kurzem Delay
+  await page.waitForTimeout(1500)
+}
+
 test('Login → Dokument öffnen → annotieren → Version hochladen', async ({ page }) => {
   let uploadedBody: Buffer | null = null
   await mockPaperlessApi(page, (body) => {
@@ -159,19 +188,7 @@ test('Login → Dokument öffnen → annotieren → Version hochladen', async ({
   await expect(pageImage).toBeVisible({ timeout: 45_000 })
 
   // --- Stift aktivieren und einen Strich zeichnen ---
-  await page.getByRole('button', { name: 'Stift', exact: true }).click()
-  const box = await pageImage.boundingBox()
-  if (!box) throw new Error('PDF-Seite nicht gefunden')
-  const startX = box.x + box.width * 0.3
-  const startY = box.y + box.height * 0.3
-  await page.mouse.move(startX, startY)
-  await page.mouse.down()
-  for (let i = 1; i <= 8; i++) {
-    await page.mouse.move(startX + i * 12, startY + i * 8, { steps: 2 })
-  }
-  await page.mouse.up()
-  // Ink-Tool committet Striche nach kurzem Delay
-  await page.waitForTimeout(1500)
+  await drawStroke(page, pageImage)
 
   // --- Speichern als neue Version ---
   await page.getByRole('button', { name: 'Speichern' }).click()
@@ -236,4 +253,133 @@ test('Lesemodus rendert die PDF-Seite', async ({ page }) => {
   const box = await pageImage.boundingBox()
   expect(box?.width ?? 0).toBeGreaterThan(50)
   expect(box?.height ?? 0).toBeGreaterThan(50)
+})
+
+/**
+ * Zurück folgt der Hierarchie (Ticket #1): Liste → Detailseite → Editor.
+ * Der Editor ersetzt seinen Verlaufseintrag, die Detailseite geht auf ein festes Ziel.
+ */
+test('Zurück führt vom Editor über die Detailseite zur Dokumentenliste', async ({ page }) => {
+  await mockPaperlessApi(page, () => undefined)
+  await signIn(page)
+
+  await page.getByRole('link', { name: 'Dokumente' }).first().click()
+  await expect(page).toHaveURL(/\/documents$/)
+  await page.getByText('Testdokument').first().click()
+  await expect(page).toHaveURL(/\/documents\/1$/)
+  await page.getByRole('button', { name: 'Annotieren', exact: true }).click()
+  await expect(page).toHaveURL(/\/documents\/1\/annotate$/)
+
+  // Zurück im Editor → Detailseite
+  const editorBack = page.getByRole('button', { name: 'Zurück: Dokument', exact: true })
+  await expect(editorBack).toBeVisible({ timeout: 45_000 })
+  await editorBack.click()
+  await expect(page).toHaveURL(/\/documents\/1$/)
+
+  // Zurück auf der Detailseite → Dokumentenliste (kein Rücksprung in den Editor)
+  await page.getByRole('button', { name: 'Zurück: Dokumente', exact: true }).click()
+  await expect(page).toHaveURL(/\/documents$/)
+})
+
+test('Die Zurück-Taste des Browsers führt vom Editor über die Detailseite zur Liste', async ({ page }) => {
+  await mockPaperlessApi(page, () => undefined)
+  await signIn(page)
+
+  await page.getByRole('link', { name: 'Dokumente' }).first().click()
+  await page.getByText('Testdokument').first().click()
+  await page.getByRole('button', { name: 'Annotieren', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Zurück: Dokument', exact: true })).toBeVisible({ timeout: 45_000 })
+
+  await page.goBack()
+  await expect(page).toHaveURL(/\/documents\/1$/)
+  await page.goBack()
+  await expect(page).toHaveURL(/\/documents$/)
+})
+
+test('Direkt geöffnete Detailseite führt mit Zurück in die Dokumentenliste', async ({ page }) => {
+  await mockPaperlessApi(page, () => undefined)
+  await signIn(page)
+
+  // Wie per Lesezeichen geöffnet: kein App-Verlauf vor der Detailseite
+  await page.goto('/documents/1')
+  await page.getByRole('button', { name: 'Zurück: Dokumente', exact: true }).click()
+  await expect(page).toHaveURL(/\/documents$/)
+})
+
+test('Aus dem Posteingang geöffnet, benennt der Zurück-Knopf den Posteingang', async ({ page }) => {
+  await mockPaperlessApi(page, () => undefined)
+  await signIn(page)
+
+  await page.getByRole('link', { name: 'Posteingang' }).first().click()
+  await expect(page).toHaveURL(/\/inbox$/)
+  await page.getByText('Testdokument').first().click()
+  await expect(page).toHaveURL(/\/documents\/1$/)
+
+  await page.getByRole('button', { name: 'Zurück: Posteingang', exact: true }).click()
+  await expect(page).toHaveURL(/\/inbox$/)
+})
+
+test('Escape verlässt den Lesemodus und führt auf die Detailseite', async ({ page }) => {
+  await mockPaperlessApi(page, () => undefined)
+  await signIn(page)
+
+  await page.getByRole('link', { name: 'Dokumente' }).first().click()
+  await page.getByText('Testdokument').first().click()
+  await page.getByRole('button', { name: 'Lesemodus', exact: true }).click()
+  await expect(page).toHaveURL(/\/documents\/1\/read$/)
+  await expect(page.getByRole('button', { name: 'Zurück: Dokument', exact: true })).toBeVisible({ timeout: 45_000 })
+
+  await page.keyboard.press('Escape')
+  await expect(page).toHaveURL(/\/documents\/1$/)
+})
+
+test('Der Editor fragt beim Verlassen mit ungespeicherten Annotationen nach', async ({ page }) => {
+  await mockPaperlessApi(page, () => undefined)
+  await signIn(page)
+
+  await page.getByRole('link', { name: 'Dokumente' }).first().click()
+  await page.getByText('Testdokument').first().click()
+  await page.getByRole('button', { name: 'Annotieren', exact: true }).click()
+  const pageImage = page.locator('img[loading], img[src^="blob:"], canvas').first()
+  await expect(pageImage).toBeVisible({ timeout: 45_000 })
+  await drawStroke(page, pageImage)
+
+  // Browser-Taste: die Abfrage greift auch hier, der Editor bleibt stehen
+  await page.goBack()
+  await expect(page.getByRole('dialog')).toContainText('Ungespeicherte Annotationen')
+  await expect(page).toHaveURL(/\/documents\/1\/annotate$/)
+
+  // Abbrechen → im Editor bleiben
+  await page.getByRole('dialog').getByRole('button', { name: 'Abbrechen', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page).toHaveURL(/\/documents\/1\/annotate$/)
+
+  // Eigener Knopf → dieselbe Abfrage, diesmal verwerfen
+  await page.getByRole('button', { name: 'Zurück: Dokument', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Verwerfen und verlassen', exact: true }).click()
+  await expect(page).toHaveURL(/\/documents\/1$/)
+})
+
+test('Ein offenes Popover fängt Escape ab, erst danach verlässt Escape den Editor', async ({ page }) => {
+  await mockPaperlessApi(page, () => undefined)
+  await signIn(page)
+
+  await page.goto('/documents/1/annotate')
+  await expect(page.getByRole('button', { name: 'Zurück: Dokument', exact: true })).toBeVisible({ timeout: 45_000 })
+
+  // Zweiter Tipp auf das aktive Werkzeug öffnet die Optionen
+  const pen = page.getByRole('button', { name: 'Stift', exact: true })
+  await pen.click()
+  await pen.click()
+  const options = page.getByText('Strichstärke')
+  await expect(options).toBeVisible()
+
+  // Erstes Escape schließt nur das Popover
+  await page.keyboard.press('Escape')
+  await expect(options).toBeHidden()
+  await expect(page).toHaveURL(/\/documents\/1\/annotate$/)
+
+  // Zweites Escape verlässt den Editor
+  await page.keyboard.press('Escape')
+  await expect(page).toHaveURL(/\/documents\/1$/)
 })

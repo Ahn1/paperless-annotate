@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Columns2, Download, Eye, GitBranch, PenLine, Pencil, Trash2 } from 'lucide-react'
 import { useApi } from '@/stores/session'
 import { useT, useLocale } from '@/lib/i18n'
+import { originState, useOrigin } from '@/lib/navigation'
 import { cn, formatDate } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
@@ -23,6 +24,8 @@ export function VersionsSection({ document }: { document: PaperlessDocument }) {
   const locale = useLocale()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  // Herkunft weiterreichen, damit der Zurück-Knopf sie nach dem Editor noch kennt
+  const origin = useOrigin()
 
   const [viewVersion, setViewVersion] = useState<DocumentVersion | null>(null)
   const [renameVersion, setRenameVersion] = useState<DocumentVersion | null>(null)
@@ -130,7 +133,9 @@ export function VersionsSection({ document }: { document: PaperlessDocument }) {
                   </IconAction>
                   <IconAction
                     title={t('versions.annotateThis')}
-                    onClick={() => navigate(`/documents/${rootId}/annotate?version=${version.id}`)}
+                    onClick={() =>
+                      navigate(`/documents/${rootId}/annotate?version=${version.id}`, { state: originState(origin) })
+                    }
                   >
                     <PenLine className="size-4" />
                   </IconAction>

@@ -5,6 +5,11 @@ import { restorePosition, transformPosition, transformSize, type Position, type 
 export interface PenPoint {
   x: number
   y: number
+  /**
+   * Stiftdruck von 0 bis 1. Nur bei echter Stifteingabe gesetzt – Maus und Finger
+   * melden laut Pointer-Events-Spezifikation den festen Ersatzwert 0.5.
+   */
+  pressure?: number
 }
 
 export interface PenSurfaceCallbacks {
@@ -47,9 +52,13 @@ export function usePenSurface(ref: RefObject<HTMLElement | null>, callbacks: Pen
     let activePointerId: number | null = null
     let activePointerType = ''
 
-    const toLocal = (e: { clientX: number; clientY: number }): PenPoint => {
+    const toLocal = (e: { clientX: number; clientY: number; pressure?: number; pointerType?: string }): PenPoint => {
       const rect = el.getBoundingClientRect()
-      return { x: e.clientX - rect.left, y: e.clientY - rect.top }
+      const point: PenPoint = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+      if ((e.pointerType ?? activePointerType) === 'pen' && typeof e.pressure === 'number') {
+        point.pressure = e.pressure
+      }
+      return point
     }
 
     const onPointerDown = (e: PointerEvent) => {

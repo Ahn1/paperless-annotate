@@ -5,6 +5,7 @@ import { AuthImage } from '@/components/AuthImage'
 import { TagChip } from '@/components/ui/misc'
 import { useLookups } from '@/hooks/data'
 import { useLocale } from '@/lib/i18n'
+import { originState, type Origin } from '@/lib/navigation'
 import { cn, formatDate } from '@/lib/utils'
 
 type Lookups = ReturnType<typeof useLookups>
@@ -15,12 +16,15 @@ export function DocumentCard({
   selected,
   selectionMode,
   onToggleSelect,
+  origin,
 }: {
   document: PaperlessDocument
   lookups: Lookups
   selected: boolean
   selectionMode: boolean
   onToggleSelect: () => void
+  /** Herkunft für den Zurück-Knopf der Detailseite. */
+  origin?: Origin
 }) {
   const locale = useLocale()
   const correspondent = document.correspondent ? lookups.correspondentById.get(document.correspondent) : null
@@ -28,6 +32,7 @@ export function DocumentCard({
   return (
     <Link
       to={`/documents/${document.id}`}
+      state={originState(origin)}
       viewTransition
       onClick={(e) => {
         if (selectionMode) {
@@ -76,12 +81,15 @@ export function DocumentRow({
   selected,
   selectionMode,
   onToggleSelect,
+  origin,
 }: {
   document: PaperlessDocument
   lookups: Lookups
   selected: boolean
   selectionMode: boolean
   onToggleSelect: () => void
+  /** Herkunft für den Zurück-Knopf der Detailseite. */
+  origin?: Origin
 }) {
   const locale = useLocale()
   const correspondent = document.correspondent ? lookups.correspondentById.get(document.correspondent) : null
@@ -89,6 +97,7 @@ export function DocumentRow({
   return (
     <Link
       to={`/documents/${document.id}`}
+      state={originState(origin)}
       onClick={(e) => {
         if (selectionMode) {
           e.preventDefault()
@@ -128,11 +137,14 @@ export function DocumentTable({
   lookups,
   selectedIds,
   onToggleSelect,
+  origin,
 }: {
   documents: PaperlessDocument[]
   lookups: Lookups
   selectedIds: Set<number>
   onToggleSelect: (id: number) => void
+  /** Herkunft für den Zurück-Knopf der Detailseite. */
+  origin?: Origin
 }) {
   const locale = useLocale()
   return (
@@ -161,7 +173,11 @@ export function DocumentTable({
                 />
               </td>
               <td className="max-w-64 px-3 py-2">
-                <Link to={`/documents/${document.id}`} className="block truncate font-medium text-ink hover:text-accent">
+                <Link
+                  to={`/documents/${document.id}`}
+                  state={originState(origin)}
+                  className="block truncate font-medium text-ink hover:text-accent"
+                >
                   {document.title}
                 </Link>
               </td>

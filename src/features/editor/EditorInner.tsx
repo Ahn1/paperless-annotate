@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useBlocker, useNavigate } from 'react-router-dom'
 import { useDocumentState } from '@embedpdf/core/react'
 import { useAnnotationCapability } from '@embedpdf/plugin-annotation/react'
 import { useInteractionManagerCapability } from '@embedpdf/plugin-interaction-manager/react'
@@ -8,6 +8,8 @@ import { useZoom } from '@embedpdf/plugin-zoom/react'
 import type { AnnotationTransferItem } from '@embedpdf/plugin-annotation'
 import type { PaperlessDocument } from '@/api/types'
 import { useT } from '@/lib/i18n'
+import { documentPath, originState, useOrigin } from '@/lib/navigation'
+import { useEscapeExit } from '@/hooks/useEscapeExit'
 import { useSession } from '@/stores/session'
 import { draftStore } from '@/lib/db'
 import { Button } from '@/components/ui/Button'
@@ -15,6 +17,7 @@ import { EditorPageLayers, GlobalPointerProvider, Scroller, Viewport, type Edito
 import { EditorToolbar } from './EditorToolbar'
 import { EraserLayer } from './EraserLayer'
 import { InkInputLayer } from './InkInputLayer'
+import { LeaveDraftDialog } from './LeaveDraftDialog'
 import { SaveVersionDialog } from './SaveVersionDialog'
 import { ThumbnailsDrawer } from './ThumbnailsDrawer'
 
@@ -29,7 +32,10 @@ export function EditorInner({
 }) {
   const t = useT()
   const navigate = useNavigate()
+  const origin = useOrigin()
   const profileId = useSession((s) => s.activeProfile?.id ?? 'default')
+  // Eine Ebene hoch: die Detailseite des Dokuments
+  const detailPath = documentPath(paperlessDocument.root_document ?? paperlessDocument.id)
 
   const { provides: annotationCap } = useAnnotationCapability()
   const { provides: interactionCap } = useInteractionManagerCapability()
@@ -201,10 +207,50 @@ export function EditorInner({
   }, [])
 
   // ---------- Verlassen ----------
-  function exit() {
-    if (dirty && !window.confirm(t('editor.unsavedLeave'))) return
-    if (dirty) persistDraft()
-    navigate(`/documents/${paperlessDocument.id}`)
+  // Der Editor ersetzt seinen Verlaufseintrag, statt einen neuen anzuhängen –
+  // sonst führt Zurück auf der Detailseite wieder in den Editor.
+  const requestExit = useCallback(() => {
+    navigate(detailPath, { replace: true, state: originState(origin) })
+  }, [navigate, detailPath, origin])
+
+  // Escape verlässt den Editor auf demselben Weg wie der Knopf
+  useEscapeExit(requestExit)
+
+  // useBlocker sperrt jeden Weg aus dem Editor, solange Annotationen ungespeichert
+  // sind: eigener Knopf, Escape, Browser-Taste, Android-Taste, iOS-Wischgeste.
+  // Die Prüfung liest sessionIds direkt – so wirkt Verwerfen sofort, ohne Re-Render.
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      sessionIds.current.size > 0 && currentLocation.pathname !== nextLocation.pathname,
+  )
+  const leaveBlocked = blocker.state === 'blocked'
+
+  // Beim Nachfragen den Entwurf sofort sichern – auch wenn der Nutzer doch bleibt
+  useEffect(() => {
+    if (leaveBlocked) persistDraft()
+  }, [leaveBlocked, persistDraft])
+
+  // Sind keine ungespeicherten Annotationen mehr da, läuft die gesperrte Navigation weiter
+  useEffect(() => {
+    if (blocker.state === 'blocked' && !dirty) blocker.proceed()
+  }, [blocker, dirty])
+
+  /** Entwurf löschen und den Editor verlassen. */
+  async function discardAndLeave() {
+    clearTimeout(saveTimer.current)
+    sessionIds.current.clear()
+    setDirty(false)
+    setDraftAvailable(false)
+    await draftStore.del(draftKey)
+  }
+
+  /** Nach dem Hochladen weitergehen – auf dem Weg, den der Nutzer gewählt hatte. */
+  async function leaveAfterUpload() {
+    clearTimeout(saveTimer.current)
+    sessionIds.current.clear()
+    setDirty(false)
+    await draftStore.del(draftKey)
+    if (blocker.state !== 'blocked') requestExit()
   }
 
   return (
@@ -219,7 +265,8 @@ export function EditorInner({
         onZoomOut={() => zoom?.zoomOut()}
         onToggleThumbs={() => setThumbsOpen((open) => !open)}
         onSave={() => setSaveOpen(true)}
-        onExit={exit}
+        onExit={requestExit}
+        backLabel={t('nav.document')}
         dirty={dirty}
         title={paperlessDocument.title}
       />
@@ -258,17 +305,21 @@ export function EditorInner({
         </div>
       </div>
 
+      {/* Abfrage beim Verlassen – der Speichern-Dialog legt sich davor */}
+      {leaveBlocked && !saveOpen && (
+        <LeaveDraftDialog
+          onSave={() => setSaveOpen(true)}
+          onDiscard={() => void discardAndLeave()}
+          onCancel={() => blocker.reset?.()}
+        />
+      )}
+
       {saveOpen && (
         <SaveVersionDialog
           docId={docId}
           document={paperlessDocument}
           onClose={() => setSaveOpen(false)}
-          onUploaded={async () => {
-            sessionIds.current.clear()
-            setDirty(false)
-            await draftStore.del(draftKey)
-            navigate(`/documents/${paperlessDocument.root_document ?? paperlessDocument.id}`)
-          }}
+          onUploaded={leaveAfterUpload}
         />
       )}
     </div>

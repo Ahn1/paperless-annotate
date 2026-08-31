@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { FileWarning } from 'lucide-react'
 import { useApi } from '@/stores/session'
 import { useT } from '@/lib/i18n'
+import { documentPath, originState, useOrigin } from '@/lib/navigation'
 import { CenteredSpinner, EmptyState } from '@/components/ui/misc'
 import { Button } from '@/components/ui/Button'
 
@@ -15,6 +16,8 @@ export function EditorPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const t = useT()
+  // Auch der Fehlerzustand geht eine Ebene hoch: zurück auf die Detailseite
+  const origin = useOrigin()
   const api = useApi()
 
   const documentId = Number(id)
@@ -51,8 +54,11 @@ export function EditorPage() {
     return (
       <div className="flex h-dvh flex-col items-center justify-center bg-surface">
         <EmptyState icon={FileWarning} title={t('editor.loadError')} />
-        <Button variant="outline" onClick={() => navigate(-1)}>
-          {t('common.back')}
+        <Button
+          variant="outline"
+          onClick={() => navigate(documentPath(documentId), { replace: true, state: originState(origin) })}
+        >
+          {t('common.backTo', { target: t('nav.document') })}
         </Button>
       </div>
     )
